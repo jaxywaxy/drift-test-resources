@@ -1,0 +1,10 @@
+name: test-resources
+notifications:
+  slack: ""  # Optional: set Slack webhook URL here
+
+checks:
+  - name: Test Infrastructure
+    repo: jaxywaxy/drift-test-resources
+    branch: main
+    path: bicep/main.bicep
+    resource_groups: [rg-drift-test]
