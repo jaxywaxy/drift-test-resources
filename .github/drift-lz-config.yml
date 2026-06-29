@@ -1,4 +1,5 @@
 name: test-resources
+subscription_id: "594e0bd0-2a8d-4419-b281-87869c20fd03"  # Required: Set your Azure subscription ID here (e.g., "12345678-abcd-1234-abcd-123456789012")
 notifications:
   slack: ""  # Optional: set Slack webhook URL here
 
