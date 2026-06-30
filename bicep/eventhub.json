@@ -1,0 +1,104 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.44.1.10279",
+      "templateHash": "10853154215222782746"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "australiaeast"
+    },
+    "environment": {
+      "type": "string",
+      "defaultValue": "test"
+    }
+  },
+  "variables": {
+    "namespaceName": "[format('eh-{0}', uniqueString(resourceGroup().id))]",
+    "eventHubName": "drift-hub"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.EventHub/namespaces",
+      "apiVersion": "2021-11-01",
+      "name": "[variables('namespaceName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard",
+        "tier": "Standard",
+        "capacity": 1
+      },
+      "properties": {
+        "isAutoInflateEnabled": false,
+        "maximumThroughputUnits": 0,
+        "kafkaEnabled": true,
+        "zoneRedundant": false,
+        "disableLocalAuth": false
+      },
+      "tags": {
+        "environment": "[parameters('environment')]",
+        "managed": "true",
+        "purpose": "drift-detection-test"
+      }
+    },
+    {
+      "type": "Microsoft.EventHub/namespaces/eventhubs",
+      "apiVersion": "2021-11-01",
+      "name": "[format('{0}/{1}', variables('namespaceName'), variables('eventHubName'))]",
+      "properties": {
+        "partitionCount": 4,
+        "messageRetentionInDays": 1,
+        "status": "Active"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.EventHub/namespaces', variables('namespaceName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.EventHub/namespaces/eventhubs/authorizationRules",
+      "apiVersion": "2021-11-01",
+      "name": "[format('{0}/{1}/{2}', variables('namespaceName'), variables('eventHubName'), 'RootManageSharedAccessKey')]",
+      "properties": {
+        "rights": [
+          "Listen",
+          "Manage",
+          "Send"
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.EventHub/namespaces/eventhubs', variables('namespaceName'), variables('eventHubName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "namespaceId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.EventHub/namespaces', variables('namespaceName'))]"
+    },
+    "namespaceName": {
+      "type": "string",
+      "value": "[variables('namespaceName')]"
+    },
+    "eventHubId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.EventHub/namespaces/eventhubs', variables('namespaceName'), variables('eventHubName'))]"
+    },
+    "eventHubName": {
+      "type": "string",
+      "value": "[variables('eventHubName')]"
+    },
+    "skuName": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.EventHub/namespaces', variables('namespaceName')), '2021-11-01', 'full').sku.name]"
+    },
+    "skuCapacity": {
+      "type": "string",
+      "value": "[string(reference(resourceId('Microsoft.EventHub/namespaces', variables('namespaceName')), '2021-11-01', 'full').sku.capacity)]"
+    }
+  }
+}

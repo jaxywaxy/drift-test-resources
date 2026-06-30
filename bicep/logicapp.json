@@ -1,0 +1,80 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.44.1.10279",
+      "templateHash": "6288226875386183641"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "australiaeast"
+    },
+    "environment": {
+      "type": "string",
+      "defaultValue": "test"
+    }
+  },
+  "variables": {
+    "workflowName": "[format('drift-wf-{0}', uniqueString(resourceGroup().id))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Logic/workflows",
+      "apiVersion": "2019-05-01",
+      "name": "[variables('workflowName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "state": "Enabled",
+        "definition": {
+          "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+          "contentVersion": "1.0.0.0",
+          "triggers": {
+            "manual": {
+              "type": "Request",
+              "kind": "Http",
+              "inputs": {
+                "schema": {}
+              }
+            }
+          },
+          "actions": {
+            "Response": {
+              "runAfter": {},
+              "type": "Response",
+              "inputs": {
+                "statusCode": 200,
+                "body": "Workflow executed"
+              }
+            }
+          },
+          "outputs": {}
+        },
+        "parameters": {},
+        "integrationAccount": null
+      },
+      "tags": {
+        "environment": "[parameters('environment')]",
+        "managed": "true",
+        "purpose": "drift-detection-test"
+      }
+    }
+  ],
+  "outputs": {
+    "workflowId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Logic/workflows', variables('workflowName'))]"
+    },
+    "workflowName": {
+      "type": "string",
+      "value": "[variables('workflowName')]"
+    },
+    "workflowUrl": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Logic/workflows', variables('workflowName')), '2019-05-01').accessEndpoint]"
+    }
+  }
+}
