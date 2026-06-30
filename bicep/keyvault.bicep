@@ -30,6 +30,16 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
   }
 }
 
+// Lock to prevent accidental deletion
+resource keyVaultLock 'Microsoft.Authorization/locks@2017-04-01' = {
+  scope: keyVault
+  name: 'keyvault-cannotdelete'
+  properties: {
+    level: 'CanNotDelete'
+    notes: 'Prevent accidental deletion of Key Vault - Critical resource'
+  }
+}
+
 output keyVaultId string = keyVault.id
 output keyVaultName string = keyVault.name
 output keyVaultUri string = keyVault.properties.vaultUri
