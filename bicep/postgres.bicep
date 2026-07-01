@@ -4,7 +4,7 @@ param adminUsername string = 'pgadmin'
 @secure()
 param adminPassword string
 
-var serverName = 'pgserver-drift-${uniqueString(resourceGroup().id)}'
+var serverName = 'pgserver-drift-${take(uniqueString(subscription().id), 8)}'
 var databaseName = 'driftdb'
 
 // PostgreSQL Server (production-like configuration)
@@ -22,13 +22,8 @@ resource postgresServer 'Microsoft.DBforPostgreSQL/servers@2017-12-01' = {
     administratorLogin: adminUsername
     administratorLoginPassword: adminPassword
     version: '11'
-    storageMB: 51200 // 50 GB
-    backupRetentionDays: 7
-    geoRedundantBackup: 'Disabled'
-    sslEnforcement: 'ENABLED'
+    sslEnforcement: 'Enabled'
     minimalTlsVersion: 'TLS1_2'
-    publicNetworkAccess: 'Enabled'
-    storageAutogrow: 'Enabled'
   }
   tags: {
     environment: environment

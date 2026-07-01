@@ -1,20 +1,10 @@
-targetScope = 'subscription'
-
 param location string = 'australiaeast'
 param environment string = 'test'
-param resourceGroupName string = 'rg-drift-test'
 @secure()
-param postgresAdminPassword string = 'DriftTest@${uniqueString(resourceGroup().id)}'
-
-// Create resource group
-resource resourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' = {
-  name: resourceGroupName
-  location: location
-}
+param postgresAdminPassword string = 'DriftTest@TestAdmin123!'
 
 // Deploy Storage Account
 module storageModule 'storage.bicep' = {
-  scope: resourceGroup
   name: 'deploy-storage'
   params: {
     location: location
@@ -24,7 +14,6 @@ module storageModule 'storage.bicep' = {
 
 // Deploy App Service
 module appServiceModule 'appservice.bicep' = {
-  scope: resourceGroup
   name: 'deploy-appservice'
   params: {
     location: location
@@ -34,7 +23,6 @@ module appServiceModule 'appservice.bicep' = {
 
 // Deploy Key Vault
 module keyVaultModule 'keyvault.bicep' = {
-  scope: resourceGroup
   name: 'deploy-keyvault'
   params: {
     location: location
@@ -44,7 +32,6 @@ module keyVaultModule 'keyvault.bicep' = {
 
 // Deploy Logic App
 module logicAppModule 'logicapp.bicep' = {
-  scope: resourceGroup
   name: 'deploy-logicapp'
   params: {
     location: location
@@ -54,7 +41,6 @@ module logicAppModule 'logicapp.bicep' = {
 
 // Deploy Log Analytics Workspace
 module logAnalyticsModule 'loganalytics.bicep' = {
-  scope: resourceGroup
   name: 'deploy-loganalytics'
   params: {
     location: location
@@ -64,7 +50,6 @@ module logAnalyticsModule 'loganalytics.bicep' = {
 
 // Deploy Event Hub Namespace
 module eventHubModule 'eventhub.bicep' = {
-  scope: resourceGroup
   name: 'deploy-eventhub'
   params: {
     location: location
@@ -74,7 +59,6 @@ module eventHubModule 'eventhub.bicep' = {
 
 // Deploy Cosmos DB
 module cosmosDbModule 'cosmosdb.bicep' = {
-  scope: resourceGroup
   name: 'deploy-cosmosdb'
   params: {
     location: location
@@ -84,7 +68,6 @@ module cosmosDbModule 'cosmosdb.bicep' = {
 
 // Deploy PostgreSQL Server
 module postgresModule 'postgres.bicep' = {
-  scope: resourceGroup
   name: 'deploy-postgres'
   params: {
     location: location
@@ -92,9 +75,6 @@ module postgresModule 'postgres.bicep' = {
     adminPassword: postgresAdminPassword
   }
 }
-
-output resourceGroupId string = resourceGroup.id
-output resourceGroupName string = resourceGroup.name
 output storageAccountId string = storageModule.outputs.storageAccountId
 output appServiceId string = appServiceModule.outputs.appServiceId
 output keyVaultId string = keyVaultModule.outputs.keyVaultId
