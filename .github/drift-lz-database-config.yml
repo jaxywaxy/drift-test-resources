@@ -2,7 +2,7 @@
 # Deploys Cosmos DB and PostgreSQL to a separate subscription for comprehensive database drift testing
 
 name: Database Testing
-subscription_id: bd48a22c-91b9-46e6-a2ff-15893e348d83
+subscription_id: "bd48a22c-91b9-46e6-a2ff-15893e348d83"
 resource_group: rg-drift-database
 location: australiaeast
 
