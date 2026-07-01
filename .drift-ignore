@@ -1,13 +1,14 @@
 # Drift ignore patterns for database testing landing zone
 # Ignores false positives and expected differences between Bicep definitions and Azure API responses
 
-# Cosmos DB - Read-only fields and location name normalization
-# Azure returns documentEndpoint, id, provisioningState in locations array
-# Also normalizes location names (australiaeast -> Australia East)
-- resource_type: "Microsoft.DocumentDB/databaseAccounts"
-  property: "properties.locations"
-  reason: "Azure returns additional read-only fields (documentEndpoint, id, provisioningState) and normalizes location name casing/spacing"
+ignore:
+  # Cosmos DB - Read-only fields and location name normalization
+  # Azure returns documentEndpoint, id, provisioningState in locations array
+  # Also normalizes location names (australiaeast -> Australia East)
+  - resource_type: "Microsoft.DocumentDB/databaseAccounts"
+    property: "properties.locations"
+    reason: "Azure returns additional read-only fields (documentEndpoint, id, provisioningState) and normalizes location name casing/spacing"
 
-# Role assignments - Managed externally, not in IaC
-- resource_type: "Microsoft.Authorization/roleAssignments"
-  reason: "Role assignments are managed separately from IaC resources"
+  # Role assignments - Managed externally, not in IaC
+  - resource_type: "Microsoft.Authorization/roleAssignments"
+    reason: "Role assignments are managed separately from IaC resources"
