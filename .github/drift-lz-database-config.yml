@@ -1,28 +1,14 @@
-# Database Testing Landing Zone Configuration
-# Deploys Cosmos DB and PostgreSQL to a separate subscription for comprehensive database drift testing
-
-name: Database Testing
+name: database-testing
 subscription_id: "bd48a22c-91b9-46e6-a2ff-15893e348d83"
-resource_group: rg-drift-database
-location: australiaeast
 
 notifications:
-  slack: https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK
-  filter: all
+  slack: ""  # Optional: set Slack webhook URL here
+  filter: all  # Options: all, drift, extra, missing
 
 checks:
-  - name: Database Resources
+  - name: Database Infrastructure
     repo: jaxywaxy/drift-test-resources
+    branch: main
     path: bicep/main.bicep
-    resource_groups: [rg-drift-database]
-    scope: subscription
-
-parameters:
-  environment: test
-  resourceGroupName: rg-drift-database
-  postgresAdminPassword: ${POSTGRES_ADMIN_PASSWORD}
-
-tags:
-  managed: 'true'
-  purpose: 'drift-detection-test'
-  resource_type: 'database'
+    resource_groups:
+      - rg-drift-database
