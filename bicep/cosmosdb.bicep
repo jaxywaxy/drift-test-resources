@@ -24,11 +24,6 @@ resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2023-11-15' = {
         isZoneRedundant: false
       }
     ]
-    capabilities: [
-      {
-        name: 'EnableServerless'
-      }
-    ]
     publicNetworkAccess: 'Enabled'
     enableAutomaticFailover: false
     enableMultipleWriteLocations: false
@@ -84,15 +79,6 @@ resource container 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/container
     options: {
       throughput: 400
     }
-  }
-}
-
-// Firewall rule (IP-based access control)
-resource firewallRule 'Microsoft.DocumentDB/databaseAccounts/ipAddressFilters@2023-11-15' = {
-  parent: cosmosAccount
-  name: 'AllowAzureServices'
-  properties: {
-    ipAddressOrRange: '0.0.0.0'
   }
 }
 

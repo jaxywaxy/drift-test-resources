@@ -66,7 +66,9 @@ module cosmosDbModule 'cosmosdb.bicep' = {
   }
 }
 
-// Deploy PostgreSQL Server
+// Deploy PostgreSQL Server (Temporarily disabled - @2017-12-01 API version is deprecated)
+// TODO: Migrate to PostgreSQL Flexible Server (@2023-06-01 or later)
+/*
 module postgresModule 'postgres.bicep' = {
   name: 'deploy-postgres'
   params: {
@@ -75,6 +77,7 @@ module postgresModule 'postgres.bicep' = {
     adminPassword: postgresAdminPassword
   }
 }
+*/
 output storageAccountId string = storageModule.outputs.storageAccountId
 output appServiceId string = appServiceModule.outputs.appServiceId
 output keyVaultId string = keyVaultModule.outputs.keyVaultId
@@ -82,4 +85,4 @@ output logicAppId string = logicAppModule.outputs.workflowId
 output logAnalyticsId string = logAnalyticsModule.outputs.workspaceId
 output eventHubNamespaceId string = eventHubModule.outputs.namespaceId
 output cosmosDbAccountName string = cosmosDbModule.outputs.accountName
-output postgresServerName string = postgresModule.outputs.serverName
+// output postgresServerName string = postgresModule.outputs.serverName  // Disabled - PostgreSQL module commented out
