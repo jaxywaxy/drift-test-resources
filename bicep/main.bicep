@@ -3,6 +3,8 @@ targetScope = 'subscription'
 param location string = 'australiaeast'
 param environment string = 'test'
 param resourceGroupName string = 'rg-drift-test'
+@secure()
+param postgresAdminPassword string = 'DriftTest@${uniqueString(resourceGroup().id)}'
 
 // Create resource group
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' = {
@@ -70,6 +72,27 @@ module eventHubModule 'eventhub.bicep' = {
   }
 }
 
+// Deploy Cosmos DB
+module cosmosDbModule 'cosmosdb.bicep' = {
+  scope: resourceGroup
+  name: 'deploy-cosmosdb'
+  params: {
+    location: location
+    environment: environment
+  }
+}
+
+// Deploy PostgreSQL Server
+module postgresModule 'postgres.bicep' = {
+  scope: resourceGroup
+  name: 'deploy-postgres'
+  params: {
+    location: location
+    environment: environment
+    adminPassword: postgresAdminPassword
+  }
+}
+
 output resourceGroupId string = resourceGroup.id
 output resourceGroupName string = resourceGroup.name
 output storageAccountId string = storageModule.outputs.storageAccountId
@@ -78,3 +101,5 @@ output keyVaultId string = keyVaultModule.outputs.keyVaultId
 output logicAppId string = logicAppModule.outputs.workflowId
 output logAnalyticsId string = logAnalyticsModule.outputs.workspaceId
 output eventHubNamespaceId string = eventHubModule.outputs.namespaceId
+output cosmosDbAccountName string = cosmosDbModule.outputs.accountName
+output postgresServerName string = postgresModule.outputs.serverName
