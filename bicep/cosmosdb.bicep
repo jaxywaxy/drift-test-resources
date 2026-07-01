@@ -24,6 +24,7 @@ resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2023-11-15' = {
         isZoneRedundant: false
       }
     ]
+    capabilities: []
     publicNetworkAccess: 'Enabled'
     enableAutomaticFailover: false
     enableMultipleWriteLocations: false
@@ -82,6 +83,15 @@ resource container 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/container
   }
 }
 
+// Firewall rule (IP-based access control)
+// Note: ipAddressFilters is deprecated; firewall is now configured via account properties
+// resource firewallRule 'Microsoft.DocumentDB/databaseAccounts/ipAddressFilters@2023-11-15' = {
+//   parent: cosmosAccount
+//   name: 'AllowAzureServices'
+//   properties: {
+//     ipAddressOrRange: '0.0.0.0'
+//   }
+// }
 output accountName string = cosmosAccount.name
 output databaseName string = sqlDatabase.name
 output containerName string = container.name
