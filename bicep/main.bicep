@@ -66,6 +66,24 @@ module cosmosDbModule 'cosmosdb.bicep' = {
   }
 }
 
+// Deploy Azure Container Registry
+module acrModule 'acr.bicep' = {
+  name: 'deploy-acr'
+  params: {
+    location: location
+    environment: environment
+  }
+}
+
+// Deploy Azure Container Instance
+module aciModule 'aci.bicep' = {
+  name: 'deploy-aci'
+  params: {
+    location: location
+    environment: environment
+  }
+}
+
 // Deploy PostgreSQL Server (Temporarily disabled - @2017-12-01 API version is deprecated)
 // TODO: Migrate to PostgreSQL Flexible Server (@2023-06-01 or later)
 /*
@@ -85,4 +103,6 @@ output logicAppId string = logicAppModule.outputs.workflowId
 output logAnalyticsId string = logAnalyticsModule.outputs.workspaceId
 output eventHubNamespaceId string = eventHubModule.outputs.namespaceId
 output cosmosDbAccountName string = cosmosDbModule.outputs.accountName
+output acrId string = acrModule.outputs.acrId
+output aciId string = aciModule.outputs.aciId
 // output postgresServerName string = postgresModule.outputs.serverName  // Disabled - PostgreSQL module commented out
