@@ -12,3 +12,18 @@ ignore:
   # Role assignments - Managed externally, not in IaC
   - resource_type: "Microsoft.Authorization/roleAssignments"
     reason: "Role assignments are managed separately from IaC resources"
+
+  # Platform network fabric - referenced-as-existing in this WORKLOAD landing zone
+  # (the platform team owns/deploys these). A platform-LZ scan omits these so its
+  # network drift surfaces; here they are noise. (Phase 4: per-LZ ignore profile.)
+  - resource_type: "Microsoft.Network/virtualNetworks"
+    reason: "VNet is platform-owned, referenced-as-existing by this workload LZ"
+
+  - resource_type: "Microsoft.Network/virtualNetworks/subnets"
+    reason: "Subnets are platform-owned (managed with the VNet), referenced by this workload LZ"
+
+  - resource_type: "Microsoft.Network/networkSecurityGroups"
+    reason: "NSG resource is platform-owned; referenced-as-existing by this workload LZ"
+
+  - resource_type: "Microsoft.Network/routeTables"
+    reason: "Route tables are platform-owned, referenced-as-existing by this workload LZ"
