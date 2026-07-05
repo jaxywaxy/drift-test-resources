@@ -2,7 +2,7 @@ name: test-resources
 subscription_id: "594e0bd0-2a8d-4419-b281-87869c20fd03"
 
 notifications:
-  slack: ""  # Optional: set Slack webhook URL here
+  slack: "${DRIFT_WEBHOOK_WORKLOAD}"  # secret reference, expanded by the agent
   filter: all  # Options: all, drift, extra, missing
 
 checks:
