@@ -21,6 +21,10 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
     networkAcls: {
       defaultAction: 'Allow'
       bypass: 'AzureServices'
+      // Declared empty so the drift agent can detect hand-added firewall
+      // exceptions (comparison is bicep-driven; an omitted key is not compared).
+      ipRules: []
+      virtualNetworkRules: []
     }
   }
   tags: {
