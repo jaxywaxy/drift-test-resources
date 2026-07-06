@@ -54,6 +54,11 @@ resource gptDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-06
     // the same deployment. The custom policy below still deploys and is
     // drift-compared; only the deployment->policy binding is omitted.
   }
+  // CognitiveServices serializes operations per account: children deployed in
+  // parallel fail with RequestConflict. Chain policy -> deployment -> project.
+  dependsOn: [
+    customRaiPolicy
+  ]
 }
 
 // Custom content-filter policy - loosening a filter out-of-band is exactly
@@ -90,6 +95,9 @@ resource aiProject 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = 
     displayName: 'Drift Test Project'
     description: 'Foundry project for drift detection testing'
   }
+  dependsOn: [
+    gptDeployment // serialize CogSvc child operations (RequestConflict otherwise)
+  ]
 }
 
 output aiAccountId string = aiAccount.id
