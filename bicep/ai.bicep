@@ -48,7 +48,11 @@ resource gptDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-06
       version: '2025-08-07'
     }
     versionUpgradeOption: 'NoAutoUpgrade'
-    raiPolicyName: customRaiPolicy.name
+    // NOTE: no raiPolicyName binding. CognitiveServices preflight validates it
+    // against PRE-deployment live state, so a from-scratch deploy always fails
+    // ("RaiPolicyName not found") even though the policy is created first in
+    // the same deployment. The custom policy below still deploys and is
+    // drift-compared; only the deployment->policy binding is omitted.
   }
 }
 
