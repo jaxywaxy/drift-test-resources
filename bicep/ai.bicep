@@ -35,7 +35,7 @@ resource aiAccount 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
 // auto-upgrade) and sku.capacity (TPM quota, the classic out-of-band bump).
 resource gptDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
   parent: aiAccount
-  name: 'gpt-4o-mini'
+  name: 'gpt-5.4-nano'
   sku: {
     name: 'GlobalStandard'
     capacity: 10
@@ -43,8 +43,8 @@ resource gptDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10
   properties: {
     model: {
       format: 'OpenAI'
-      name: 'gpt-4o-mini'
-      version: '2024-07-18'
+      name: 'gpt-5.4-nano'
+      version: '2026-03-17'
     }
     versionUpgradeOption: 'NoAutoUpgrade'
   }
