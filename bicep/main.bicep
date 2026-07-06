@@ -2,6 +2,8 @@ param location string = 'australiaeast'
 param environment string = 'test'
 @secure()
 param postgresAdminPassword string = 'DriftTest@TestAdmin123!'
+@secure()
+param sqlAdminPassword string = 'DriftTest@SqlAdmin123!'
 
 // Deploy Storage Account
 module storageModule 'storage.bicep' = {
@@ -87,6 +89,35 @@ module aciModule 'aci.bicep' = {
 // Deploy AI Services account + model deployment (AI resource drift testing)
 module aiModule 'ai.bicep' = {
   name: 'deploy-ai'
+  params: {
+    location: location
+    environment: environment
+  }
+}
+
+// SQL Server + Basic DB (TDE policy testing + future firewall-rule children)
+module sqlModule 'sql.bicep' = {
+  name: 'deploy-sql'
+  params: {
+    location: location
+    environment: environment
+    sqlAdminPassword: sqlAdminPassword
+  }
+}
+
+// Group-1 generic-pipeline resources: action group + metric alert
+module monitoringModule 'monitoring.bicep' = {
+  name: 'deploy-monitoring'
+  params: {
+    location: location
+    environment: environment
+    storageAccountId: storageModule.outputs.storageAccountId
+  }
+}
+
+// Group-1 generic-pipeline resources: Service Bus, Traffic Manager, DNS zone
+module messagingDnsModule 'messaging-dns.bicep' = {
+  name: 'deploy-messaging-dns'
   params: {
     location: location
     environment: environment
