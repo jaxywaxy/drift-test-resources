@@ -9,9 +9,9 @@ ignore:
     property: "properties.locations"
     reason: "Azure returns additional read-only fields (documentEndpoint, id, provisioningState) and normalizes location name casing/spacing"
 
-  # Role assignments - Managed externally, not in IaC
-  - resource_type: "Microsoft.Authorization/roleAssignments"
-    reason: "Role assignments are managed separately from IaC resources"
+  # NOTE: Microsoft.Authorization/roleAssignments is deliberately NOT ignored -
+  # out-of-band grants are exactly what RBAC drift detection catches. Ignore
+  # specific automation-created grants by name: "<RoleName> -> <Type>:<id>".
 
   # Platform network fabric - referenced-as-existing in this WORKLOAD landing zone
   # (the platform team owns/deploys these). A platform-LZ scan omits these so its
