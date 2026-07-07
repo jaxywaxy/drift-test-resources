@@ -61,6 +61,91 @@ resource dnsZone 'Microsoft.Network/dnszones@2023-07-01-preview' = {
   }
 }
 
+// --- Data-plane / child resources (ARM-REST-expanded by the drift agent) ---
+
+resource driftQueue 'Microsoft.ServiceBus/namespaces/queues@2022-10-01-preview' = {
+  parent: serviceBus
+  name: 'drift-queue'
+  properties: {
+    maxDeliveryCount: 10
+    lockDuration: 'PT1M'
+  }
+}
+
+resource driftTopic 'Microsoft.ServiceBus/namespaces/topics@2022-10-01-preview' = {
+  parent: serviceBus
+  name: 'drift-topic'
+}
+
+resource wwwRecord 'Microsoft.Network/dnszones/A@2023-07-01-preview' = {
+  parent: dnsZone
+  name: 'www'
+  properties: {
+    TTL: 300
+    ARecords: [
+      { ipv4Address: '203.0.113.10' }
+    ]
+  }
+}
+
+// Private DNS zone + vnet link + record: stale hand-added records are the
+// hardest-to-debug outages, and DINE policies often create links.
+resource vnet 'Microsoft.Network/virtualNetworks@2023-09-01' = {
+  name: 'vnet-drift-test'
+  location: location
+  properties: {
+    addressSpace: {
+      addressPrefixes: [
+        '10.99.0.0/24'
+      ]
+    }
+    subnets: [
+      {
+        name: 'default'
+        properties: {
+          addressPrefix: '10.99.0.0/26'
+        }
+      }
+    ]
+  }
+  tags: {
+    environment: environment
+    managed: 'true'
+  }
+}
+
+resource privateZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
+  name: 'drifttest.internal'
+  location: 'global'
+  tags: {
+    environment: environment
+    managed: 'true'
+  }
+}
+
+resource privateZoneLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
+  parent: privateZone
+  name: 'link-vnet-drift-test'
+  location: 'global'
+  properties: {
+    registrationEnabled: false
+    virtualNetwork: {
+      id: vnet.id
+    }
+  }
+}
+
+resource dbRecord 'Microsoft.Network/privateDnsZones/A@2020-06-01' = {
+  parent: privateZone
+  name: 'db'
+  properties: {
+    ttl: 300
+    aRecords: [
+      { ipv4Address: '10.99.0.10' }
+    ]
+  }
+}
+
 output serviceBusId string = serviceBus.id
 output trafficManagerId string = trafficManager.id
 output dnsZoneId string = dnsZone.id

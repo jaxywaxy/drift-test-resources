@@ -124,6 +124,15 @@ module messagingDnsModule 'messaging-dns.bicep' = {
   }
 }
 
+// User-assigned identity + federated credential (child-expansion coverage)
+module identityModule 'identity.bicep' = {
+  name: 'deploy-identity'
+  params: {
+    location: location
+    environment: environment
+  }
+}
+
 // Deploy PostgreSQL Server (Temporarily disabled - @2017-12-01 API version is deprecated)
 // TODO: Migrate to PostgreSQL Flexible Server (@2023-06-01 or later)
 /*

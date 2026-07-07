@@ -50,6 +50,12 @@ resource authRule 'Microsoft.EventHub/namespaces/eventhubs/authorizationrules@20
   }
 }
 
+// Consumer group (expanded child; $Default is auto-created and filtered)
+resource driftConsumerGroup 'Microsoft.EventHub/namespaces/eventhubs/consumergroups@2021-11-01' = {
+  parent: eventHub
+  name: 'driftcg'
+}
+
 output namespaceId string = eventHubNamespace.id
 output namespaceName string = eventHubNamespace.name
 output eventHubId string = eventHub.id
