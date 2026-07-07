@@ -72,10 +72,8 @@ resource driftQueue 'Microsoft.ServiceBus/namespaces/queues@2022-10-01-preview' 
   }
 }
 
-resource driftTopic 'Microsoft.ServiceBus/namespaces/topics@2022-10-01-preview' = {
-  parent: serviceBus
-  name: 'drift-topic'
-}
+// NOTE: no topics - Basic tier supports queues only (Standard costs ~$10/mo
+// for no additional drift-test value; queues exercise the same child pattern).
 
 resource wwwRecord 'Microsoft.Network/dnszones/A@2023-07-01-preview' = {
   parent: dnsZone
