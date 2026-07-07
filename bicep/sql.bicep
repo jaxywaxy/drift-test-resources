@@ -42,5 +42,17 @@ resource sqlDb 'Microsoft.Sql/servers/databases@2023-08-01-preview' = {
   }
 }
 
+// Firewall rules (ARM-REST-expanded children). A hand-added rule - especially
+// an AllowAll 0.0.0.0-255.255.255.255 range - opening the DB to the internet
+// is the classic drift the agent should catch as an extra.
+resource allowAzureServices 'Microsoft.Sql/servers/firewallRules@2023-08-01-preview' = {
+  parent: sqlServer
+  name: 'AllowAllWindowsAzureIps'
+  properties: {
+    startIpAddress: '0.0.0.0'
+    endIpAddress: '0.0.0.0'
+  }
+}
+
 output sqlServerId string = sqlServer.id
 output sqlServerName string = sqlServer.name

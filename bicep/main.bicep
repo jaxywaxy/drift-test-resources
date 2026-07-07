@@ -117,6 +117,7 @@ module monitoringModule 'monitoring.bicep' = {
     location: location
     environment: environment
     storageAccountId: storageModule.outputs.storageAccountId
+    workspaceId: logAnalyticsModule.outputs.workspaceId
   }
 }
 
@@ -132,6 +133,15 @@ module messagingDnsModule 'messaging-dns.bicep' = {
 // User-assigned identity + federated credential (child-expansion coverage)
 module identityModule 'identity.bicep' = {
   name: 'deploy-identity'
+  params: {
+    location: location
+    environment: environment
+  }
+}
+
+// Container Apps (Consumption env + app - modern serverless containers)
+module containerAppModule 'containerapp.bicep' = {
+  name: 'deploy-containerapp'
   params: {
     location: location
     environment: environment

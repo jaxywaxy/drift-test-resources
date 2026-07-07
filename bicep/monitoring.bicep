@@ -1,6 +1,7 @@
 param location string = 'australiaeast'
 param environment string = 'test'
 param storageAccountId string
+param workspaceId string = ''
 
 // Action group + metric alert (group-1 generic-pipeline resources).
 // Alert rule tampering (disabling, threshold changes) is classic quiet drift.
@@ -53,6 +54,53 @@ resource availabilityAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
     actions: [
       {
         actionGroupId: actionGroup.id
+      }
+    ]
+  }
+  tags: {
+    environment: environment
+    managed: 'true'
+  }
+}
+
+// Data Collection Rule (Resource Graph row). Modern audit/telemetry pipeline
+// config - a redirected destination or disabled data source is drift; a
+// deleted DCR (or its per-VM association) silences telemetry.
+resource dataCollectionRule 'Microsoft.Insights/dataCollectionRules@2022-06-01' = if (workspaceId != '') {
+  name: 'dcr-drift-test'
+  location: location
+  kind: 'Linux'
+  properties: {
+    dataSources: {
+      performanceCounters: [
+        {
+          name: 'perfCounters'
+          streams: [
+            'Microsoft-Perf'
+          ]
+          samplingFrequencyInSeconds: 60
+          counterSpecifiers: [
+            'Processor(*)\\% Processor Time'
+          ]
+        }
+      ]
+    }
+    destinations: {
+      logAnalytics: [
+        {
+          name: 'la-dest'
+          workspaceResourceId: workspaceId
+        }
+      ]
+    }
+    dataFlows: [
+      {
+        streams: [
+          'Microsoft-Perf'
+        ]
+        destinations: [
+          'la-dest'
+        ]
       }
     ]
   }
