@@ -5,6 +5,10 @@ param postgresAdminPassword string = 'DriftTest@TestAdmin123!'
 @secure()
 param sqlAdminPassword string = 'DriftTest@SqlAdmin123!'
 
+// Load balancer + Application Gateway (WAF_v2 ~$180/mo) are OFF by default;
+// set true to deploy them for network-appliance drift testing.
+param deployNetworkAppliances bool = false
+
 // Deploy Storage Account
 module storageModule 'storage.bicep' = {
   name: 'deploy-storage'
@@ -128,6 +132,24 @@ module messagingDnsModule 'messaging-dns.bicep' = {
 // User-assigned identity + federated credential (child-expansion coverage)
 module identityModule 'identity.bicep' = {
   name: 'deploy-identity'
+  params: {
+    location: location
+    environment: environment
+  }
+}
+
+// Standard Load Balancer (embedded named-collection drift: rules/probes/pools)
+module lbModule 'lb.bicep' = if (deployNetworkAppliances) {
+  name: 'deploy-lb'
+  params: {
+    location: location
+    environment: environment
+  }
+}
+
+// Application Gateway WAF_v2 + WAF policy (expensive - gated by the flag)
+module appgwModule 'appgw.bicep' = if (deployNetworkAppliances) {
+  name: 'deploy-appgw'
   params: {
     location: location
     environment: environment
