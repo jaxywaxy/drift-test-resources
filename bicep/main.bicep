@@ -29,6 +29,7 @@ module keyVaultModule 'keyvault.bicep' = {
   params: {
     location: location
     environment: environment
+    workspaceId: logAnalyticsModule.outputs.workspaceId
   }
 }
 

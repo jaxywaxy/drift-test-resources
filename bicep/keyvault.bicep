@@ -47,3 +47,21 @@ resource keyVaultLock 'Microsoft.Authorization/locks@2017-04-01' = {
 output keyVaultId string = keyVault.id
 output keyVaultName string = keyVault.name
 output keyVaultUri string = keyVault.properties.vaultUri
+
+// Diagnostic setting: a deleted one is a silenced audit feed - the drift the
+// agent's diagnostic-settings expansion exists to catch.
+param workspaceId string = ''
+
+resource kvDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = if (workspaceId != '') {
+  scope: keyVault
+  name: 'kv-audit'
+  properties: {
+    workspaceId: workspaceId
+    logs: [
+      {
+        category: 'AuditEvent'
+        enabled: true
+      }
+    ]
+  }
+}

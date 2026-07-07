@@ -47,3 +47,13 @@ resource appService 'Microsoft.Web/sites@2023-01-01' = {
 output appServiceId string = appService.id
 output appServiceName string = appService.name
 output appServicePlanId string = appServicePlan.id
+
+// App settings child (agent compares KEY SETS only - values never leave Azure)
+resource appSettings 'Microsoft.Web/sites/config@2023-01-01' = {
+  parent: appService
+  name: 'appsettings'
+  properties: {
+    DRIFT_TEST: 'true'
+    APP_ENVIRONMENT: environment
+  }
+}
