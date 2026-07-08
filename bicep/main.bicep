@@ -166,6 +166,14 @@ module appgwModule 'appgw.bicep' = if (deployNetworkAppliances) {
   }
 }
 
+// Front Door Standard (~$35/mo - gated by the flag)
+module frontdoorModule 'frontdoor.bicep' = if (deployNetworkAppliances) {
+  name: 'deploy-frontdoor'
+  params: {
+    environment: environment
+  }
+}
+
 // Deploy PostgreSQL Server (Temporarily disabled - @2017-12-01 API version is deprecated)
 // TODO: Migrate to PostgreSQL Flexible Server (@2023-06-01 or later)
 /*
