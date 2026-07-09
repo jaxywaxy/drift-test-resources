@@ -15,6 +15,10 @@ param deployNetworkAppliances bool = false
 // it for VM property / extension / disk-NIC-validator drift testing.
 param deployVirtualMachine bool = false
 
+// AKS cluster (2x Standard_D2s_v3 nodes ~$140/mo) is OFF by default; set true to
+// deploy it for managedClusters + agentPools drift testing.
+param deployAks bool = false
+
 // Deploy Storage Account
 module storageModule 'storage.bicep' = {
   name: 'deploy-storage'
@@ -217,6 +221,27 @@ module vmModule 'vm.bicep' = if (deployVirtualMachine) {
     location: location
     environment: environment
     adminPassword: vmAdminPassword
+  }
+  dependsOn: [messagingDnsModule]
+}
+
+// AKS cluster + system pool + separate user agentPool (gated - compute cost).
+module aksModule 'aks.bicep' = if (deployAks) {
+  name: 'deploy-aks'
+  params: {
+    location: location
+    environment: environment
+  }
+}
+
+// Private endpoint to the Key Vault + private DNS zone group. References the
+// estate VNet/subnet created by the messaging-dns module.
+module privateEndpointModule 'privateendpoints.bicep' = {
+  name: 'deploy-privateendpoints'
+  params: {
+    location: location
+    environment: environment
+    keyVaultId: keyVaultModule.outputs.keyVaultId
   }
   dependsOn: [messagingDnsModule]
 }
