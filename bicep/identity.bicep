@@ -27,3 +27,4 @@ resource githubFederation 'Microsoft.ManagedIdentity/userAssignedIdentities/fede
 }
 
 output identityId string = driftIdentity.id
+output principalId string = driftIdentity.properties.principalId

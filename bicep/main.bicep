@@ -4,10 +4,16 @@ param environment string = 'test'
 param postgresAdminPassword string = 'DriftTest@TestAdmin123!'
 @secure()
 param sqlAdminPassword string = 'DriftTest@SqlAdmin123!'
+@secure()
+param vmAdminPassword string = 'DriftTest@VmAdmin123!'
 
 // Load balancer + Application Gateway (WAF_v2 ~$180/mo) are OFF by default;
 // set true to deploy them for network-appliance drift testing.
 param deployNetworkAppliances bool = false
+
+// Linux VM (Standard_B1s) + AMA extension is OFF by default; set true to deploy
+// it for VM property / extension / disk-NIC-validator drift testing.
+param deployVirtualMachine bool = false
 
 // Deploy Storage Account
 module storageModule 'storage.bicep' = {
@@ -172,6 +178,47 @@ module frontdoorModule 'frontdoor.bicep' = if (deployNetworkAppliances) {
   params: {
     environment: environment
   }
+}
+
+// Event Grid: custom topic + system topic (on storage) + event subscriptions.
+// Subscriptions are EXTENSION resources delivered to the existing Event Hub.
+module eventGridModule 'eventgrid.bicep' = {
+  name: 'deploy-eventgrid'
+  params: {
+    location: location
+    environment: environment
+    eventHubId: eventHubModule.outputs.eventHubId
+    storageAccountId: storageModule.outputs.storageAccountId
+  }
+}
+
+// RBAC role assignment on the workload identity (exercises rbac.py detection).
+module rbacModule 'rbac.bicep' = {
+  name: 'deploy-rbac'
+  params: {
+    environment: environment
+    principalId: identityModule.outputs.principalId
+  }
+}
+
+// Audit policy assignment at RG scope (exercises policy.py detection).
+module policyModule 'policy.bicep' = {
+  name: 'deploy-policy'
+  params: {
+    environment: environment
+  }
+}
+
+// Linux VM + AMA extension (gated - has compute cost). References the estate
+// VNet/subnet created by the messaging-dns module.
+module vmModule 'vm.bicep' = if (deployVirtualMachine) {
+  name: 'deploy-vm'
+  params: {
+    location: location
+    environment: environment
+    adminPassword: vmAdminPassword
+  }
+  dependsOn: [messagingDnsModule]
 }
 
 // Deploy PostgreSQL Server (Temporarily disabled - @2017-12-01 API version is deprecated)
