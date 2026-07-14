@@ -40,9 +40,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Azure CLI
-        uses: azure/cli@v1
-
       - name: Login to Azure with OIDC
         uses: azure/login@v2
         with:
@@ -73,9 +70,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Setup Azure CLI
-        uses: azure/cli@v1
 
       - name: Login to Azure with OIDC
         uses: azure/login@v2
@@ -117,9 +111,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Setup Azure CLI
-        uses: azure/cli@v1
 
       - name: Login to Azure with OIDC
         uses: azure/login@v2
