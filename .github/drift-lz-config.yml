@@ -11,4 +11,4 @@ checks:
     branch: main
     path: bicep/main.bicep
     resource_groups:
-      - rg-drift-test
+      - drift-test-resources-test
