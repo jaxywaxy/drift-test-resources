@@ -13,20 +13,10 @@ on:
     paths:
       - 'bicep/**'
   workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Deployment environment'
-        required: true
-        default: 'prod'
-        type: choice
-        options:
-          - dev
-          - staging
-          - prod
 
 env:
   AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-  RESOURCE_GROUP: drift-test-resources-${{ github.event.inputs.environment || 'dev' }}
+  RESOURCE_GROUP: drift-test-resources-${{ github.event.inputs.environment || 'test' }}
   LOCATION: australiaeast
 
 jobs:
@@ -91,7 +81,7 @@ jobs:
             --resource-group "${{ env.RESOURCE_GROUP }}" \
             --template-file bicep/main.bicep \
             --parameters \
-              environment=${{ github.event.inputs.environment || 'dev' }} \
+              environment=${{ github.event.inputs.environment || 'test' }} \
               location=${{ env.LOCATION }}
         continue-on-error: true
 
