@@ -86,6 +86,75 @@ resource wwwRecord 'Microsoft.Network/dnszones/A@2023-07-01-preview' = {
   }
 }
 
+// NSG with explicit baseline rules: an out-of-band allow-any inbound rule is
+// the classic real-world unauthorized change. Rules are declared inline so
+// rule add/modify/delete all surface as property drift on securityRules.
+resource nsg 'Microsoft.Network/networkSecurityGroups@2023-09-01' = {
+  name: 'nsg-drift-test'
+  location: location
+  properties: {
+    securityRules: [
+      {
+        name: 'allow-https-from-vnet'
+        properties: {
+          priority: 100
+          direction: 'Inbound'
+          access: 'Allow'
+          protocol: 'Tcp'
+          sourcePortRange: '*'
+          destinationPortRange: '443'
+          sourceAddressPrefix: 'VirtualNetwork'
+          destinationAddressPrefix: '*'
+        }
+      }
+      {
+        name: 'deny-ssh-from-internet'
+        properties: {
+          priority: 4000
+          direction: 'Inbound'
+          access: 'Deny'
+          protocol: 'Tcp'
+          sourcePortRange: '*'
+          destinationPortRange: '22'
+          sourceAddressPrefix: 'Internet'
+          destinationAddressPrefix: '*'
+        }
+      }
+    ]
+  }
+  tags: {
+    environment: environment
+    managed: 'true'
+    purpose: 'drift-detection-test'
+  }
+}
+
+// Route table forcing egress through a (notional) firewall appliance: changing
+// the next hop out-of-band silently bypasses inspection - the classic network
+// security drift alongside NSG rule tampering.
+resource routeTable 'Microsoft.Network/routeTables@2023-09-01' = {
+  name: 'rt-drift-test'
+  location: location
+  properties: {
+    disableBgpRoutePropagation: true
+    routes: [
+      {
+        name: 'default-via-firewall'
+        properties: {
+          addressPrefix: '0.0.0.0/0'
+          nextHopType: 'VirtualAppliance'
+          nextHopIpAddress: '10.99.0.62'
+        }
+      }
+    ]
+  }
+  tags: {
+    environment: environment
+    managed: 'true'
+    purpose: 'drift-detection-test'
+  }
+}
+
 // Private DNS zone + vnet link + record: stale hand-added records are the
 // hardest-to-debug outages, and DINE policies often create links.
 resource vnet 'Microsoft.Network/virtualNetworks@2023-09-01' = {
@@ -102,6 +171,12 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-09-01' = {
         name: 'default'
         properties: {
           addressPrefix: '10.99.0.0/26'
+          networkSecurityGroup: {
+            id: nsg.id
+          }
+          routeTable: {
+            id: routeTable.id
+          }
         }
       }
     ]
