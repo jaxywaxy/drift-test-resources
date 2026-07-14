@@ -1,12 +1,17 @@
 param location string = 'australiaeast'
 param environment string = 'test'
 
-// Application Gateway WAF_v2 (self-contained: own vnet/subnet + public IP +
-// WAF policy). NOTE: WAF_v2 runs ~$180/mo, so main.bicep gates this behind
-// the deployNetworkAppliances flag. Drift-interesting surface for testing
-// later: WAF policy mode (Prevention->Detection), sslPolicy min version,
-// listener protocol, and the big embedded named collections (httpListeners,
-// requestRoutingRules, backendHttpSettingsCollection, ...).
+@description('Resource id of the WAF policy (owned by waf.bicep, which deploys it unattached and free).')
+param wafPolicyId string
+
+// Application Gateway WAF_v2 (self-contained: own vnet/subnet + public IP).
+// NOTE: WAF_v2 runs ~$180/mo, so main.bicep gates this behind the
+// deployNetworkAppliances flag. The WAF POLICY itself lives in waf.bicep and
+// deploys always (a policy object is free), so WAF governance drift - mode
+// Prevention->Detection, state, managed rule sets - is testable without this
+// gateway. Drift-interesting surface here when it IS deployed: sslPolicy min
+// version, listener protocol, and the big embedded named collections
+// (httpListeners, requestRoutingRules, backendHttpSettingsCollection, ...).
 
 resource appgwVnet 'Microsoft.Network/virtualNetworks@2023-09-01' = {
   name: 'vnet-appgw-drift'
@@ -48,33 +53,9 @@ resource appgwPublicIp 'Microsoft.Network/publicIPAddresses@2023-09-01' = {
   }
 }
 
-// WAF policy - mode flips (Prevention->Detection) and disabled managed rule
-// sets are exactly the governance drift to detect later.
-resource wafPolicy 'Microsoft.Network/ApplicationGatewayWebApplicationFirewallPolicies@2023-09-01' = {
-  name: 'waf-drift-test'
-  location: location
-  properties: {
-    policySettings: {
-      state: 'Enabled'
-      mode: 'Prevention'
-      requestBodyCheck: true
-      maxRequestBodySizeInKb: 128
-      fileUploadLimitInMb: 100
-    }
-    managedRules: {
-      managedRuleSets: [
-        {
-          ruleSetType: 'OWASP'
-          ruleSetVersion: '3.2'
-        }
-      ]
-    }
-  }
-  tags: {
-    environment: environment
-    managed: 'true'
-  }
-}
+// The WAF policy is declared in waf.bicep (deployed unattached and free) and
+// passed in as wafPolicyId, so the policy and this gateway can never diverge
+// or collide on the resource name.
 
 var appgwName = 'appgw-drift-test'
 
@@ -95,7 +76,7 @@ resource appGateway 'Microsoft.Network/applicationGateways@2023-09-01' = {
       policyName: 'AppGwSslPolicy20220101'
     }
     firewallPolicy: {
-      id: wafPolicy.id
+      id: wafPolicyId
     }
     gatewayIPConfigurations: [
       {
@@ -185,4 +166,3 @@ resource appGateway 'Microsoft.Network/applicationGateways@2023-09-01' = {
 }
 
 output appGatewayId string = appGateway.id
-output wafPolicyId string = wafPolicy.id
