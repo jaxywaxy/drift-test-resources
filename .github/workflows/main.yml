@@ -1,17 +1,11 @@
-name: Deploy Bicep Resources
+name: Deploy Bicep Resources (multi-env, manual)
 
+# Manual-only: this workflow and drift-lz-deploy.yml both used to trigger on
+# push to main, double-deploying every bicep merge into two DIFFERENT resource
+# groups (drift-test-resources-dev AND drift-test-resources-test) - the source
+# of the stray-RG confusion. drift-lz-deploy.yml owns the push trigger and the
+# canonical rg-drift-test estate; use this one only for ad-hoc env copies.
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'bicep/**'
-      - '.github/workflows/deploy-bicep-resources.yml'
-  pull_request:
-    branches:
-      - main
-    paths:
-      - 'bicep/**'
   workflow_dispatch:
     inputs:
       environment:
@@ -66,7 +60,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Deploy Resources
     needs: validate
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch'
     permissions:
       id-token: write
       contents: read
@@ -106,30 +100,3 @@ jobs:
         run: |
           echo "Deployment completed. Checking deployed resources..."
           az resource list --resource-group "${{ env.RESOURCE_GROUP }}" --output table
-
-  cleanup-on-pr:
-    runs-on: ubuntu-latest
-    name: Cleanup PR Resources
-    if: github.event_name == 'pull_request' && github.event.action == 'closed'
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Azure CLI
-        uses: azure/setup-cli@v3
-
-      - name: Login to Azure with OIDC
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Delete PR resource group
-        run: |
-          RESOURCE_GROUP_PR="drift-test-resources-pr-${{ github.event.pull_request.number }}"
-          echo "Cleaning up resources from PR #${{ github.event.pull_request.number }}"
-          az group delete --name "$RESOURCE_GROUP_PR" --yes || true

@@ -16,7 +16,10 @@ on:
 
 env:
   AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-  RESOURCE_GROUP: drift-test-resources-${{ github.event.inputs.environment || 'test' }}
+  # Must match resource_groups in .github/drift-lz-config.yml - the drift scan
+  # compares this template against THIS resource group. uniqueString-derived
+  # resource names also seed from the RG name, so moving RGs renames everything.
+  RESOURCE_GROUP: rg-drift-test
   LOCATION: australiaeast
 
 jobs:
@@ -74,16 +77,40 @@ jobs:
             --name "${{ env.RESOURCE_GROUP }}" \
             --location "${{ env.LOCATION }}" || true
 
+      - name: Recover soft-deleted resources
+        run: |
+          # A previous teardown leaves soft-deleted shells that block preflight
+          # (FlagMustBeSetForRestore). AI/Cognitive accounts can be purged; the
+          # Key Vault has purge protection, so it must be RECOVERED instead and
+          # the deployment then updates it in place.
+          for name in $(az cognitiveservices account list-deleted \
+              --query "[?contains(id, '/resourceGroups/${{ env.RESOURCE_GROUP }}/')].name" -o tsv); do
+            echo "Purging soft-deleted Cognitive Services account: $name"
+            az cognitiveservices account purge \
+              --name "$name" --location "${{ env.LOCATION }}" \
+              --resource-group "${{ env.RESOURCE_GROUP }}" || true
+          done
+          for name in $(az keyvault list-deleted \
+              --query "[?contains(properties.vaultId, '/resourceGroups/${{ env.RESOURCE_GROUP }}/')].name" -o tsv); do
+            echo "Recovering soft-deleted (purge-protected) Key Vault: $name"
+            az keyvault recover --name "$name" || true
+          done
+
       - name: Deploy Bicep resources
         run: |
           echo "Deploying Bicep resources from $PWD/bicep/main.bicep"
-          az deployment group create \
-            --resource-group "${{ env.RESOURCE_GROUP }}" \
-            --template-file bicep/main.bicep \
-            --parameters \
-              environment=${{ github.event.inputs.environment || 'test' }} \
-              location=${{ env.LOCATION }}
-        continue-on-error: true
+          deploy() {
+            az deployment group create \
+              --resource-group "${{ env.RESOURCE_GROUP }}" \
+              --template-file bicep/main.bicep \
+              --parameters \
+                environment=test \
+                location=${{ env.LOCATION }}
+          }
+          # A fresh Log Analytics workspace races the DCR (InvalidOutputTable
+          # "Microsoft-Perf not available"); a single rerun heals it. Real
+          # failures still fail the workflow (no continue-on-error).
+          deploy || { echo "Deployment failed; retrying once (DCR/LA race heals on rerun)..."; sleep 60; deploy; }
 
       - name: Output deployment results
         if: always()
