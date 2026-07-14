@@ -168,11 +168,24 @@ module lbModule 'lb.bicep' = if (deployNetworkAppliances) {
 }
 
 // Application Gateway WAF_v2 + WAF policy (expensive - gated by the flag)
+// WAF policy - deployed ALWAYS (unattached policy objects are free; the
+// ~$180/mo WAF_v2 gateway below stays gated). Gives the estate the WAF
+// governance drift surface: policySettings.mode Prevention->Detection,
+// state Enabled->Disabled, managed rule sets removed.
+module wafModule 'waf.bicep' = {
+  name: 'deploy-waf'
+  params: {
+    location: location
+    environment: environment
+  }
+}
+
 module appgwModule 'appgw.bicep' = if (deployNetworkAppliances) {
   name: 'deploy-appgw'
   params: {
     location: location
     environment: environment
+    wafPolicyId: wafModule.outputs.wafPolicyId
   }
 }
 
