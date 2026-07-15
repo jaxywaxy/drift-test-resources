@@ -180,6 +180,28 @@ module wafModule 'waf.bicep' = {
   }
 }
 
+// Function App on a Y1 consumption plan (~$0 with no executions): functions
+// carry their own transport/exposure controls (httpsOnly, minTlsVersion,
+// ftpsState, publicNetworkAccess) separate from the App Service.
+module functionAppModule 'functionapp.bicep' = {
+  name: 'deploy-functionapp'
+  params: {
+    location: location
+    environment: environment
+    storageAccountName: storageModule.outputs.storageAccountName
+  }
+}
+
+// Standalone Standard public IP (~$3.65/mo) - ddosSettings.protectionMode is
+// the security control worth watching.
+module publicIpModule 'publicip.bicep' = {
+  name: 'deploy-publicip'
+  params: {
+    location: location
+    environment: environment
+  }
+}
+
 module appgwModule 'appgw.bicep' = if (deployNetworkAppliances) {
   name: 'deploy-appgw'
   params: {
