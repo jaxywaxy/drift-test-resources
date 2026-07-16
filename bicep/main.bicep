@@ -19,6 +19,11 @@ param deployVirtualMachine bool = false
 // deploy it for managedClusters + agentPools drift testing.
 param deployAks bool = false
 
+// Cosmos DB is OFF by default: it takes ~5-10 min to provision and slows every
+// deploy. Already drift-verified (account + sqlDatabases + containers); set true
+// only when re-testing Cosmos. Gated like AKS/VM so day-to-day deploys are fast.
+param deployCosmos bool = false
+
 // Deploy Storage Account
 module storageModule 'storage.bicep' = {
   name: 'deploy-storage'
@@ -75,7 +80,7 @@ module eventHubModule 'eventhub.bicep' = {
 }
 
 // Deploy Cosmos DB
-module cosmosDbModule 'cosmosdb.bicep' = {
+module cosmosDbModule 'cosmosdb.bicep' = if (deployCosmos) {
   name: 'deploy-cosmosdb'
   params: {
     location: location
@@ -137,6 +142,39 @@ module messagingDnsModule 'messaging-dns.bicep' = {
   params: {
     location: location
     environment: environment
+  }
+}
+
+// Recovery Services vault (~free with no protected items): backup soft-delete
+// and public network access are the governance drift surface.
+module recoveryServicesModule 'recoveryservices.bicep' = {
+  name: 'deploy-recoveryservices'
+  params: {
+    location: location
+    environment: environment
+  }
+}
+
+// Azure Cache for Redis, Basic C0 (~$16/mo). NOTE: Redis provisions SLOWLY
+// (~15-20 min) - the slowest resource in the estate after Cosmos/AKS. Gate it
+// behind a flag if deploy time becomes a problem. Security drift surface:
+// enableNonSslPort, minimumTlsVersion, publicNetworkAccess.
+module redisModule 'redis.bicep' = {
+  name: 'deploy-redis'
+  params: {
+    location: location
+    environment: environment
+  }
+}
+
+// PostgreSQL Flexible Server, Burstable B1ms (~$12/mo). Migrated from the
+// deprecated Single Server module (was commented out below).
+module postgresModule 'postgres.bicep' = {
+  name: 'deploy-postgres'
+  params: {
+    location: location
+    environment: environment
+    adminPassword: postgresAdminPassword
   }
 }
 
@@ -281,25 +319,12 @@ module privateEndpointModule 'privateendpoints.bicep' = {
   dependsOn: [messagingDnsModule]
 }
 
-// Deploy PostgreSQL Server (Temporarily disabled - @2017-12-01 API version is deprecated)
-// TODO: Migrate to PostgreSQL Flexible Server (@2023-06-01 or later)
-/*
-module postgresModule 'postgres.bicep' = {
-  name: 'deploy-postgres'
-  params: {
-    location: location
-    environment: environment
-    adminPassword: postgresAdminPassword
-  }
-}
-*/
 output storageAccountId string = storageModule.outputs.storageAccountId
 output appServiceId string = appServiceModule.outputs.appServiceId
 output keyVaultId string = keyVaultModule.outputs.keyVaultId
 output logicAppId string = logicAppModule.outputs.workflowId
 output logAnalyticsId string = logAnalyticsModule.outputs.workspaceId
 output eventHubNamespaceId string = eventHubModule.outputs.namespaceId
-output cosmosDbAccountName string = cosmosDbModule.outputs.accountName
 output acrId string = acrModule.outputs.acrId
 output aciId string = aciModule.outputs.aciId
 // output postgresServerName string = postgresModule.outputs.serverName  // Disabled - PostgreSQL module commented out

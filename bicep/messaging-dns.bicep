@@ -9,12 +9,15 @@ var tmProfileName = 'tmdrift${uniqueString(resourceGroup().id)}'
 // and are deliberately not declared until child expansion exists for them -
 // declaring them now would produce false missing_in_azure drift.
 
+// Standard tier (was Basic): topics require Standard. Basic supports queues
+// only. ~$10/mo. The namespace's own security surface (minimumTlsVersion,
+// publicNetworkAccess, disableLocalAuth) is unchanged.
 resource serviceBus 'Microsoft.ServiceBus/namespaces@2022-10-01-preview' = {
   name: sbNamespaceName
   location: location
   sku: {
-    name: 'Basic'
-    tier: 'Basic'
+    name: 'Standard'
+    tier: 'Standard'
   }
   properties: {
     minimumTlsVersion: '1.2'
@@ -24,6 +27,26 @@ resource serviceBus 'Microsoft.ServiceBus/namespaces@2022-10-01-preview' = {
   tags: {
     environment: environment
     managed: 'true'
+  }
+}
+
+// Service Bus topic (Standard-tier only). Expanded by the agent (namespaces ->
+// topics), so declaring it is safe. Property drift surface: requiresDuplicate-
+// Detection, defaultMessageTimeToLive, maxSizeInMegabytes, status, enable-
+// BatchedOperations. NOTE: topic SUBSCRIPTIONS/rules are deliberately NOT
+// declared yet - they are grandchildren under a dynamically-named topic and the
+// agent has no expansion spec for them, so declaring one would false-flag
+// missing_in_azure (see the header comment). Add them once the agent gains
+// namespaces/topics/subscriptions expansion (mirrors EG subs, PR #207).
+resource driftTopic 'Microsoft.ServiceBus/namespaces/topics@2022-10-01-preview' = {
+  parent: serviceBus
+  name: 'drift-topic'
+  properties: {
+    defaultMessageTimeToLive: 'P14D'
+    maxSizeInMegabytes: 1024
+    requiresDuplicateDetection: false
+    enableBatchedOperations: true
+    status: 'Active'
   }
 }
 

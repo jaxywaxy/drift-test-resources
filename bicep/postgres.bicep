@@ -4,26 +4,50 @@ param adminUsername string = 'pgadmin'
 @secure()
 param adminPassword string
 
-var serverName = 'pgserver-drift-${take(uniqueString(subscription().id), 8)}'
-var databaseName = 'driftdb'
+var serverName = 'pgflex-drift-${take(uniqueString(resourceGroup().id), 8)}'
 
-// PostgreSQL Server (production-like configuration)
-resource postgresServer 'Microsoft.DBforPostgreSQL/servers@2017-12-01' = {
+// PostgreSQL FLEXIBLE Server (migrated from the deprecated Single Server API
+// @2017-12-01, which was disabled). Burstable Standard_B1ms (~$12/mo).
+//
+// Only the SERVER is declared - its children (databases, firewallRules,
+// configurations) are NOT expanded by the drift agent, so declaring them would
+// false-flag missing_in_azure (same rule as the Service Bus topic subscriptions
+// and the messaging-dns header comment). The server itself is a base Resource
+// Graph row and carries the security-relevant drift surface:
+//   - version
+//   - network.publicNetworkAccess
+//   - backup.backupRetentionDays / geoRedundantBackup
+//   - authConfig.passwordAuth / activeDirectoryAuth
+//   - highAvailability.mode
+resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01' = {
   name: serverName
   location: location
   sku: {
-    name: 'B_Gen5_1'
-    tier: 'Basic'
-    capacity: 1
-    family: 'Gen5'
+    name: 'Standard_B1ms'
+    tier: 'Burstable'
   }
   properties: {
     createMode: 'Default'
     administratorLogin: adminUsername
     administratorLoginPassword: adminPassword
-    version: '11'
-    sslEnforcement: 'Enabled'
-    minimalTlsVersion: 'TLS1_2'
+    version: '16'
+    storage: {
+      storageSizeGB: 32
+    }
+    backup: {
+      backupRetentionDays: 7
+      geoRedundantBackup: 'Disabled'
+    }
+    network: {
+      publicNetworkAccess: 'Enabled'
+    }
+    highAvailability: {
+      mode: 'Disabled'
+    }
+    authConfig: {
+      passwordAuth: 'Enabled'
+      activeDirectoryAuth: 'Disabled'
+    }
   }
   tags: {
     environment: environment
@@ -32,47 +56,5 @@ resource postgresServer 'Microsoft.DBforPostgreSQL/servers@2017-12-01' = {
   }
 }
 
-// Database
-resource database 'Microsoft.DBforPostgreSQL/servers/databases@2017-12-01' = {
-  parent: postgresServer
-  name: databaseName
-  properties: {
-    charset: 'UTF8'
-    collation: 'en_US.utf8'
-  }
-}
-
-// Firewall rule - Allow Azure services
-resource firewallRuleAzure 'Microsoft.DBforPostgreSQL/servers/firewallRules@2017-12-01' = {
-  parent: postgresServer
-  name: 'AllowAzureServices'
-  properties: {
-    startIpAddress: '0.0.0.0'
-    endIpAddress: '0.0.0.0'
-  }
-}
-
-// Firewall rule - Allow local testing (localhost)
-resource firewallRuleLocal 'Microsoft.DBforPostgreSQL/servers/firewallRules@2017-12-01' = {
-  parent: postgresServer
-  name: 'AllowLocalhost'
-  properties: {
-    startIpAddress: '127.0.0.1'
-    endIpAddress: '127.0.0.1'
-  }
-}
-
-// Server parameters for production-like settings
-resource serverParameters 'Microsoft.DBforPostgreSQL/servers/configurations@2017-12-01' = {
-  parent: postgresServer
-  name: 'log_slow_statement'
-  properties: {
-    value: '1000'
-    source: 'user-override'
-  }
-}
-
 output serverName string = postgresServer.name
-output databaseName string = database.name
 output serverFqdn string = postgresServer.properties.fullyQualifiedDomainName
-output connectionString string = 'postgresql://${adminUsername}@${serverName}:${adminPassword}@${postgresServer.properties.fullyQualifiedDomainName}:5432/${databaseName}?sslmode=require'
