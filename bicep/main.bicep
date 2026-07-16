@@ -155,17 +155,6 @@ module recoveryServicesModule 'recoveryservices.bicep' = {
   }
 }
 
-// Azure Cache for Redis, Basic C0 (~$16/mo). NOTE: Redis provisions SLOWLY
-// (~15-20 min) - the slowest resource in the estate after Cosmos/AKS. Gate it
-// behind a flag if deploy time becomes a problem. Security drift surface:
-// enableNonSslPort, minimumTlsVersion, publicNetworkAccess.
-module redisModule 'redis.bicep' = {
-  name: 'deploy-redis'
-  params: {
-    location: location
-    environment: environment
-  }
-}
 
 // PostgreSQL Flexible Server, Burstable B1ms (~$12/mo). Migrated from the
 // deprecated Single Server module (was commented out below).
