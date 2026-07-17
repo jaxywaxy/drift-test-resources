@@ -207,6 +207,20 @@ module wafModule 'waf.bicep' = {
   }
 }
 
+// Azure Firewall Policy + rule collection groups - deployed ALWAYS (a policy
+// attached to <=1 firewall is free; the ~$1.25/hr firewall itself stays
+// gated). Gives the estate the firewall-rules drift surface: rule
+// added/removed/action-flipped, threatIntelMode Alert->Off, out-of-band
+// threat-intel whitelist entries, DNS proxy/server changes.
+module firewallModule 'firewall.bicep' = {
+  name: 'deploy-firewall'
+  params: {
+    location: location
+    environment: environment
+    deployFirewall: deployNetworkAppliances
+  }
+}
+
 // Function App on a Y1 consumption plan (~$0 with no executions): functions
 // carry their own transport/exposure controls (httpsOnly, minTlsVersion,
 // ftpsState, publicNetworkAccess) separate from the App Service.
