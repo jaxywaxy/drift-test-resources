@@ -114,9 +114,13 @@ resource vmss 'Microsoft.Compute/virtualMachineScaleSets@2023-09-01' = {
             publicKeys: [
               {
                 path: '/home/${adminUsername}/.ssh/authorized_keys'
-                // Throwaway public key - a public key is not a secret, and the
-                // scale set runs no instances to log into.
-                keyData: 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC7drifttestkeyplaceholderonly drift-test'
+                // Throwaway public key whose private half was generated and
+                // destroyed without ever being stored. A public key is not a
+                // secret, and the scale set runs no instances to log into.
+                // NOTE: this must be a REAL key - Azure parses keyData and
+                // rejects a made-up string with InvalidParameter, which is
+                // exactly how the first deployment of this file failed.
+                keyData: 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC4hrBSZeP1njoYi5bXoivf3ppUa4d3wSuCY9mSbgLRY/dSqVo/ka9OWqwLIpHcXVuuwWm4wXpc/Dmj7dj8S1K4csrSuClKtODRU3nDHhMiWDYp21X9ROlZaleiaP9uBvhF8T8xXPUA7sjb7afYIG7oh2hQ3AEjhBQlYaXXabxmvD0vtgPg+y4aBZ4EAMVOJT0thsqOAp6Uf6eizVTsASaAaLDAxpYLBLpQXy1S/qD4z8AGIAzaA/8Zi91ZfVVkHxFRUSJi9woA/VTLNMAmLevF8xRy0C1zuFQVc3NZwA5ylcUkg70rxJZjNTPkyxbh+giSXBSHg7+Q9EJ25dTxTRBn drift-test-throwaway'
               }
             ]
           }
