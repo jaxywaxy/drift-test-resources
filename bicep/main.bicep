@@ -301,6 +301,19 @@ module vmModule 'vm.bicep' = if (deployVirtualMachine) {
   dependsOn: [messagingDnsModule]
 }
 
+// VM Scale Set (capacity 0) + standalone managed disk + availability set.
+// NOT gated: a scale set with no instances, an availability set and a 4 GiB
+// HDD are effectively free. References the estate VNet/subnet created by the
+// messaging-dns module.
+module computeModule 'compute.bicep' = {
+  name: 'deploy-compute'
+  params: {
+    location: location
+    environment: environment
+  }
+  dependsOn: [messagingDnsModule]
+}
+
 // AKS cluster + system pool + separate user agentPool (gated - compute cost).
 module aksModule 'aks.bicep' = if (deployAks) {
   name: 'deploy-aks'
