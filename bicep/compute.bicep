@@ -126,6 +126,16 @@ resource vmss 'Microsoft.Compute/virtualMachineScaleSets@2023-09-01' = {
           }
         }
       }
+      // Host-level encryption. REQUIRES the Microsoft.Compute/EncryptionAtHost
+      // feature to be registered on the subscription - Azure rejects this
+      // property for merely BEING PRESENT otherwise, even declared false, which
+      // is how two deployments of this file failed. The feature is now
+      // registered on sub-lz-bicep; a subscription without it must delete this
+      // block rather than set it false.
+      //
+      // Declared false so ENABLING it out-of-band (`az vmss update --set
+      // ...encryptionAtHost=true`) is unambiguous drift, and so the agent's
+      // critical rating for this path gets exercised live.
       securityProfile: {
         encryptionAtHost: false
       }
@@ -143,6 +153,29 @@ resource vmss 'Microsoft.Compute/virtualMachineScaleSets@2023-09-01' = {
             storageAccountType: 'Premium_LRS'
           }
         }
+      }
+      // Application Health extension. Not decoration: automaticRepairsPolicy
+      // above CANNOT be enabled without health monitoring - Azure rejects the
+      // scale set otherwise - and it would have been the next deployment
+      // failure after encryptionAtHost. Costs nothing at capacity 0 (the model
+      // carries the extension; no instance ever runs it) and adds an
+      // extensionProfile surface to drift against.
+      extensionProfile: {
+        extensions: [
+          {
+            name: 'HealthExtension'
+            properties: {
+              publisher: 'Microsoft.ManagedServices'
+              type: 'ApplicationHealthLinux'
+              typeHandlerVersion: '1.0'
+              autoUpgradeMinorVersion: true
+              settings: {
+                protocol: 'tcp'
+                port: 80
+              }
+            }
+          }
+        ]
       }
       networkProfile: {
         networkInterfaceConfigurations: [
