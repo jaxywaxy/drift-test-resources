@@ -1,9 +1,20 @@
 name: test-resources
 subscription_id: "594e0bd0-2a8d-4419-b281-87869c20fd03"
 
+# Owner-routed notifications: platform-owned drift (network fabric - VNets,
+# NSGs, route tables, firewall policies + their rule collection groups) goes to
+# the platform channel; workload drift goes to the app-team channel. Each team's
+# `owners` filter admits only its own drift; secret refs (${DRIFT_WEBHOOK_*}) are
+# expanded by the agent at send time.
 notifications:
-  slack: "${DRIFT_WEBHOOK_WORKLOAD}"  # secret reference, expanded by the agent
-  filter: all  # Options: all, drift, extra, missing
+  platform:
+    slack: "${DRIFT_WEBHOOK_PLATFORM}"
+    owners: [platform]
+    filter: all  # Options: all, drift, extra, missing
+  workload:
+    slack: "${DRIFT_WEBHOOK_WORKLOAD}"
+    owners: [workload]
+    filter: all
 
 checks:
   - name: Test Infrastructure
