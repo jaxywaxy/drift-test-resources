@@ -126,9 +126,13 @@ resource vmss 'Microsoft.Compute/virtualMachineScaleSets@2023-09-01' = {
           }
         }
       }
-      securityProfile: {
-        encryptionAtHost: false
-      }
+      // NO securityProfile block. `encryptionAtHost` requires the
+      // Microsoft.Compute/EncryptionAtHost subscription feature, and Azure
+      // rejects the property for merely BEING PRESENT - declaring it false is
+      // still InvalidParameter. Enabling the feature is a subscription-wide
+      // change this estate should not make on its own. The agent still rates
+      // encryptionAtHost critical wherever a template does declare it; it just
+      // is not exercised live here.
       storageProfile: {
         imageReference: {
           publisher: 'Canonical'
@@ -143,6 +147,29 @@ resource vmss 'Microsoft.Compute/virtualMachineScaleSets@2023-09-01' = {
             storageAccountType: 'Premium_LRS'
           }
         }
+      }
+      // Application Health extension. Not decoration: automaticRepairsPolicy
+      // above CANNOT be enabled without health monitoring - Azure rejects the
+      // scale set otherwise - and it would have been the next deployment
+      // failure after encryptionAtHost. Costs nothing at capacity 0 (the model
+      // carries the extension; no instance ever runs it) and adds an
+      // extensionProfile surface to drift against.
+      extensionProfile: {
+        extensions: [
+          {
+            name: 'HealthExtension'
+            properties: {
+              publisher: 'Microsoft.ManagedServices'
+              type: 'ApplicationHealthLinux'
+              typeHandlerVersion: '1.0'
+              autoUpgradeMinorVersion: true
+              settings: {
+                protocol: 'tcp'
+                port: 80
+              }
+            }
+          }
+        ]
       }
       networkProfile: {
         networkInterfaceConfigurations: [
