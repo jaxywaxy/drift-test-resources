@@ -126,13 +126,19 @@ resource vmss 'Microsoft.Compute/virtualMachineScaleSets@2023-09-01' = {
           }
         }
       }
-      // NO securityProfile block. `encryptionAtHost` requires the
-      // Microsoft.Compute/EncryptionAtHost subscription feature, and Azure
-      // rejects the property for merely BEING PRESENT - declaring it false is
-      // still InvalidParameter. Enabling the feature is a subscription-wide
-      // change this estate should not make on its own. The agent still rates
-      // encryptionAtHost critical wherever a template does declare it; it just
-      // is not exercised live here.
+      // Host-level encryption. REQUIRES the Microsoft.Compute/EncryptionAtHost
+      // feature to be registered on the subscription - Azure rejects this
+      // property for merely BEING PRESENT otherwise, even declared false, which
+      // is how two deployments of this file failed. The feature is now
+      // registered on sub-lz-bicep; a subscription without it must delete this
+      // block rather than set it false.
+      //
+      // Declared false so ENABLING it out-of-band (`az vmss update --set
+      // ...encryptionAtHost=true`) is unambiguous drift, and so the agent's
+      // critical rating for this path gets exercised live.
+      securityProfile: {
+        encryptionAtHost: false
+      }
       storageProfile: {
         imageReference: {
           publisher: 'Canonical'
