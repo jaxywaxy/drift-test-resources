@@ -13,6 +13,11 @@ on:
     paths:
       - 'bicep/**'
   workflow_dispatch:
+    inputs:
+      deploy_aks:
+        description: 'Deploy the AKS cluster (2x Standard_D2s_v3, ~$140/mo - REMEMBER TO TEAR DOWN)'
+        type: boolean
+        default: false
 
 env:
   AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
@@ -96,6 +101,26 @@ jobs:
             az keyvault recover --name "$name" || true
           done
 
+      - name: Resolve deployAks
+        id: aks
+        env:
+          DEPLOY_AKS_INPUT: ${{ inputs.deploy_aks }}
+        run: |
+          # Dispatch with deploy_aks=true to CREATE the cluster. After that it
+          # stays declared on every subsequent push: the deployment is
+          # incremental, so a push with deployAks=false would NOT delete the
+          # cluster - it would just stop declaring it, and the next drift scan
+          # would report the cluster and its agentPools as extra_in_azure.
+          # Existence therefore wins, and the way to remove AKS is to delete it
+          # (or tear the RG down), not to redeploy without it.
+          DEPLOY_AKS="${DEPLOY_AKS_INPUT:-false}"
+          if az aks show -g "${{ env.RESOURCE_GROUP }}" -n aks-drift-test >/dev/null 2>&1; then
+            echo "aks-drift-test already exists - keeping it declared"
+            DEPLOY_AKS=true
+          fi
+          echo "deploy_aks=$DEPLOY_AKS" >> "$GITHUB_OUTPUT"
+          echo "deployAks=$DEPLOY_AKS"
+
       - name: Deploy Bicep resources
         run: |
           echo "Deploying Bicep resources from $PWD/bicep/main.bicep"
@@ -105,7 +130,8 @@ jobs:
               --template-file bicep/main.bicep \
               --parameters \
                 environment=test \
-                location=${{ env.LOCATION }}
+                location=${{ env.LOCATION }} \
+                deployAks=${{ steps.aks.outputs.deploy_aks }}
           }
           # A fresh Log Analytics workspace races the DCR (InvalidOutputTable
           # "Microsoft-Perf not available"); a single rerun heals it. Real
