@@ -23,3 +23,20 @@ checks:
     path: bicep/test-stack/main.bicep
     resource_groups:
       - drift-test-rg-deploy
+    # Deployment stack drift. `expect` is what makes the enforcement posture
+    # checkable at all: a stack records nothing about what it was SUPPOSED to
+    # be, so anything not declared here is never asserted, and the live values
+    # are deliberately not used as a baseline. Ownership and stack health are
+    # checked with or without this block.
+    deployment_stack:
+      name: test-stack
+      scope: resource_group
+      expect:
+        deny_settings:
+          mode: denyWriteAndDelete
+          apply_to_child_scopes: true
+          excluded_principals: []
+          excluded_actions: []
+        action_on_unmanage:
+          resources: delete
+          resource_groups: delete

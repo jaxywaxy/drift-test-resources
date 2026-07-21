@@ -1,0 +1,139 @@
+name: Deploy Test Stack (deployment stack)
+
+# Deploys bicep/test-stack as an Azure DEPLOYMENT STACK, which is what makes the
+# drift agent's stack checks meaningful: a stack carries an authoritative list of
+# what it manages plus a deny assignment, neither of which a plain
+# `az deployment group create` produces.
+#
+# Dispatch-only on purpose. The sibling deploy workflow runs on push, but this
+# estate is torn down between rounds and a push-triggered stack deploy would
+# quietly recreate billable resources.
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Deploy/update the stack, or tear it down'
+        type: choice
+        options: [deploy, teardown]
+        default: deploy
+      deny_settings_mode:
+        description: 'Deny mode. denyWriteAndDelete BLOCKS manual drift injection - see note below'
+        type: choice
+        options: [denyWriteAndDelete, denyDelete, none]
+        default: denyWriteAndDelete
+      apply_to_child_scopes:
+        description: 'Apply deny to resources inside the scope, not just the scope itself'
+        type: boolean
+        default: true
+      excluded_principals:
+        description: 'Space-separated AAD object IDs exempt from the deny assignment (max 5)'
+        required: false
+        default: ''
+        type: string
+
+env:
+  AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  # Must match `resource_groups` and `deployment_stack.name` in
+  # .github/drift-lz-stacks-config.yml - the drift scan looks for this exact
+  # stack in this exact resource group.
+  RESOURCE_GROUP: drift-test-rg-deploy
+  STACK_NAME: test-stack
+  LOCATION: australiaeast
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  stack:
+    runs-on: ubuntu-latest
+    name: ${{ inputs.action }} test-stack
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Azure with OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Create resource group
+        if: inputs.action == 'deploy'
+        run: |
+          # An RG-scoped stack does not create its own resource group.
+          az group create --name "$RESOURCE_GROUP" --location "$LOCATION" -o none
+
+      - name: Deploy stack
+        if: inputs.action == 'deploy'
+        env:
+          DENY_MODE: ${{ inputs.deny_settings_mode }}
+          APPLY_TO_CHILD: ${{ inputs.apply_to_child_scopes }}
+          EXCLUDED_PRINCIPALS: ${{ inputs.excluded_principals }}
+          # Overrides the placeholder in parameters.dev.json when the secret
+          # exists, so the committed file is not the source of the password.
+          SQL_ADMIN_PASSWORD: ${{ secrets.SQL_ADMIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          ARGS=(
+            --name "$STACK_NAME"
+            --resource-group "$RESOURCE_GROUP"
+            --template-file bicep/test-stack/main.bicep
+            --parameters @bicep/test-stack/parameters.dev.json
+            # deleteAll => resources: delete, resourceGroups: delete. This is
+            # what drift-lz-stacks-config.yml declares under
+            # expect.action_on_unmanage; changing it here will (correctly) show
+            # up as stack drift on the next scan.
+            --action-on-unmanage deleteAll
+            --deny-settings-mode "$DENY_MODE"
+            --yes
+          )
+
+          if [ -n "${SQL_ADMIN_PASSWORD:-}" ]; then
+            ARGS+=(--parameters "adminPassword=$SQL_ADMIN_PASSWORD")
+          fi
+
+          if [ "$APPLY_TO_CHILD" = "true" ]; then
+            ARGS+=(--deny-settings-apply-to-child-scopes)
+          fi
+
+          if [ -n "$EXCLUDED_PRINCIPALS" ]; then
+            # Word-split intentionally: the flag takes a space-separated list.
+            # shellcheck disable=SC2206
+            PRINCIPALS=($EXCLUDED_PRINCIPALS)
+            ARGS+=(--deny-settings-excluded-principals "${PRINCIPALS[@]}")
+          fi
+
+          az stack group create "${ARGS[@]}"
+
+      - name: Show stack state
+        if: inputs.action == 'deploy'
+        run: |
+          az stack group show --name "$STACK_NAME" --resource-group "$RESOURCE_GROUP" \
+            --query "{state:provisioningState,deny:denySettings,onUnmanage:actionOnUnmanage,managed:length(resources)}" \
+            -o json
+
+          echo ""
+          echo "The drift scan (Landing Zone Stacks Drift Check) compares this against"
+          echo "expect: in .github/drift-lz-stacks-config.yml."
+          echo ""
+          if [ "${{ inputs.deny_settings_mode }}" = "denyWriteAndDelete" ]; then
+            echo "NOTE: deny is enforcing. Manual drift injection through the portal or CLI"
+            echo "will be BLOCKED - that is the control working, not a broken test. To inject"
+            echo "drift for a live round, re-dispatch with excluded_principals set to the"
+            echo "object ID doing the injecting, or with deny_settings_mode: none."
+          fi
+
+      - name: Tear down stack
+        if: inputs.action == 'teardown'
+        run: |
+          set -euo pipefail
+          # deleteAll removes the managed resources too; without it they are
+          # detached and keep billing after the stack is gone.
+          az stack group delete --name "$STACK_NAME" --resource-group "$RESOURCE_GROUP" \
+            --action-on-unmanage deleteAll --yes || true
+          az group delete --name "$RESOURCE_GROUP" --yes --no-wait || true
+          echo "Stack deleted and resource group deletion started."
