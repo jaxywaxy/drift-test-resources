@@ -1,0 +1,345 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.45.15.27210",
+      "templateHash": "2904711311413105751"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "australiaeast",
+      "metadata": {
+        "description": "Location for the resource group and child resources"
+      }
+    },
+    "adminLogin": {
+      "type": "string",
+      "defaultValue": "sqladminuser",
+      "metadata": {
+        "description": "Administrator login for the SQL server"
+      }
+    },
+    "adminPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Administrator password for the SQL server (secure)"
+      }
+    },
+    "deployWebApp": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Whether to deploy the App Service and plan"
+      }
+    },
+    "appServiceSkuName": {
+      "type": "string",
+      "defaultValue": "F1",
+      "metadata": {
+        "description": "App Service plan SKU name"
+      }
+    },
+    "appServiceSkuTier": {
+      "type": "string",
+      "defaultValue": "Free",
+      "metadata": {
+        "description": "App Service plan SKU tier"
+      }
+    }
+  },
+  "variables": {
+    "suffix": "[uniqueString(resourceGroup().id)]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "deployRgResources",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "adminLogin": {
+            "value": "[parameters('adminLogin')]"
+          },
+          "adminPassword": {
+            "value": "[parameters('adminPassword')]"
+          },
+          "suffix": {
+            "value": "[variables('suffix')]"
+          },
+          "deployWebApp": {
+            "value": "[parameters('deployWebApp')]"
+          },
+          "appServiceSkuName": {
+            "value": "[parameters('appServiceSkuName')]"
+          },
+          "appServiceSkuTier": {
+            "value": "[parameters('appServiceSkuTier')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.45.15.27210",
+              "templateHash": "4214759829053765062"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for resources"
+              }
+            },
+            "adminLogin": {
+              "type": "string",
+              "metadata": {
+                "description": "SQL admin login"
+              }
+            },
+            "adminPassword": {
+              "type": "securestring",
+              "metadata": {
+                "description": "SQL admin password"
+              }
+            },
+            "suffix": {
+              "type": "string",
+              "metadata": {
+                "description": "Suffix to make names unique"
+              }
+            },
+            "deployWebApp": {
+              "type": "bool",
+              "defaultValue": true,
+              "metadata": {
+                "description": "Whether to deploy the App Service and plan"
+              }
+            },
+            "appServiceSkuName": {
+              "type": "string",
+              "defaultValue": "F1",
+              "metadata": {
+                "description": "App Service plan SKU name"
+              }
+            },
+            "appServiceSkuTier": {
+              "type": "string",
+              "defaultValue": "Free",
+              "metadata": {
+                "description": "App Service plan SKU tier"
+              }
+            }
+          },
+          "variables": {
+            "storageName": "[toLower(format('drifttestsa{0}', parameters('suffix')))]",
+            "kvName": "[toLower(format('drifttestkv{0}', parameters('suffix')))]",
+            "vnetName": "drifttest-vnet",
+            "subnetName": "default",
+            "sqlServerName": "[toLower(format('drifttestsql{0}', parameters('suffix')))]",
+            "sqlDbName": "drifttestdb",
+            "appServicePlanName": "[format('driftAppPlan{0}', parameters('suffix'))]",
+            "webAppName": "[toLower(format('drifttestweb{0}', parameters('suffix')))]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/virtualNetworks",
+              "apiVersion": "2021-05-01",
+              "name": "[variables('vnetName')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "addressSpace": {
+                  "addressPrefixes": [
+                    "10.1.0.0/16"
+                  ]
+                },
+                "subnets": [
+                  {
+                    "name": "[variables('subnetName')]",
+                    "properties": {
+                      "addressPrefix": "10.1.0.0/24",
+                      "privateEndpointNetworkPolicies": "Disabled"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2021-09-01",
+              "name": "[variables('storageName')]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "Standard_LRS"
+              },
+              "kind": "StorageV2",
+              "properties": {
+                "accessTier": "Hot"
+              }
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults",
+              "apiVersion": "2021-10-01",
+              "name": "[variables('kvName')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "tenantId": "[tenant().tenantId]",
+                "sku": {
+                  "family": "A",
+                  "name": "standard"
+                },
+                "accessPolicies": [],
+                "enablePurgeProtection": true,
+                "networkAcls": {
+                  "defaultAction": "Deny",
+                  "bypass": "AzureServices",
+                  "virtualNetworkRules": [],
+                  "ipRules": []
+                }
+              }
+            },
+            {
+              "type": "Microsoft.Network/privateEndpoints",
+              "apiVersion": "2021-05-01",
+              "name": "[format('pe-{0}', variables('kvName'))]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "subnet": {
+                  "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnetName'))]"
+                },
+                "privateLinkServiceConnections": [
+                  {
+                    "name": "kvConnection",
+                    "properties": {
+                      "privateLinkServiceId": "[resourceId('Microsoft.KeyVault/vaults', variables('kvName'))]",
+                      "groupIds": [
+                        "vault"
+                      ]
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', variables('kvName'))]",
+                "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Sql/servers",
+              "apiVersion": "2022-02-01-preview",
+              "name": "[variables('sqlServerName')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "administratorLogin": "[parameters('adminLogin')]",
+                "administratorLoginPassword": "[parameters('adminPassword')]",
+                "version": "12.0"
+              },
+              "sku": {
+                "name": "GP_Gen5_2",
+                "tier": "GeneralPurpose"
+              }
+            },
+            {
+              "type": "Microsoft.Sql/servers/databases",
+              "apiVersion": "2021-02-01-preview",
+              "name": "[format('{0}/{1}', variables('sqlServerName'), variables('sqlDbName'))]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "Basic",
+                "tier": "Basic"
+              },
+              "properties": {},
+              "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', variables('sqlServerName'))]"
+              ]
+            },
+            {
+              "condition": "[parameters('deployWebApp')]",
+              "type": "Microsoft.Web/serverfarms",
+              "apiVersion": "2022-03-01",
+              "name": "[variables('appServicePlanName')]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "[parameters('appServiceSkuName')]",
+                "tier": "[parameters('appServiceSkuTier')]"
+              },
+              "properties": {
+                "reserved": false
+              }
+            },
+            {
+              "condition": "[parameters('deployWebApp')]",
+              "type": "Microsoft.Web/sites",
+              "apiVersion": "2022-03-01",
+              "name": "[variables('webAppName')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]",
+                "siteConfig": {
+                  "appSettings": [
+                    {
+                      "name": "WEBSITE_RUN_FROM_PACKAGE",
+                      "value": "1"
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "storageAccountName": {
+              "type": "string",
+              "value": "[variables('storageName')]"
+            },
+            "keyVaultName": {
+              "type": "string",
+              "value": "[variables('kvName')]"
+            },
+            "sqlServerName": {
+              "type": "string",
+              "value": "[variables('sqlServerName')]"
+            },
+            "webAppName": {
+              "type": "string",
+              "value": "[if(parameters('deployWebApp'), variables('webAppName'), '')]"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "storageAccountName": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deployRgResources'), '2025-04-01').outputs.storageAccountName.value]"
+    },
+    "keyVaultName": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deployRgResources'), '2025-04-01').outputs.keyVaultName.value]"
+    },
+    "sqlServerName": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deployRgResources'), '2025-04-01').outputs.sqlServerName.value]"
+    },
+    "webAppName": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deployRgResources'), '2025-04-01').outputs.webAppName.value]"
+    }
+  }
+}
