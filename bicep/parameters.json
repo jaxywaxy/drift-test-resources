@@ -8,6 +8,6 @@
     "deployNetworkAppliances": { "value": false },
     "deployVirtualMachine": { "value": false },
     "deployCosmos": { "value": false },
-    "deployAks": { "value": true }
+    "deployAks": { "value": false }
   }
 }
