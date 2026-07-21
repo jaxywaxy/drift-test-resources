@@ -5,8 +5,15 @@ var clusterName = 'aks-drift-test'
 
 // AKS cluster with a system node pool (inline) + security-posture properties the
 // drift agent should treat as critical: enableRBAC, apiServerAccessProfile
-// (authorized IP ranges / private cluster), networkProfile. Control plane is Free
-// tier; nodes are Standard_D2s_v3 (DSv3 quota; B-series has 0 quota here).
+// (authorized IP ranges / private cluster), networkProfile, and the identity/
+// governance tranche (aadProfile, azurepolicy addon, autoUpgradeProfile,
+// oidcIssuerProfile). Control plane is Free tier; nodes are Standard_D2s_v3
+// (DSv3 quota; B-series has 0 quota here).
+//
+// NOT declared here, though the agent rates them critical if a template does
+// declare them: addonProfiles.omsagent (needs a workspace ID and bills log
+// ingestion) and securityProfile.defender (Defender for Containers is billed).
+// Left out so this estate stays cheap to stand up and tear down.
 resource aks 'Microsoft.ContainerService/managedClusters@2024-02-01' = {
   name: clusterName
   location: location
@@ -32,6 +39,29 @@ resource aks 'Microsoft.ContainerService/managedClusters@2024-02-01' = {
     }
     apiServerAccessProfile: {
       enablePrivateCluster: false
+    }
+    // Identity + governance surface for the second AKS tranche. Declared on
+    // purpose: these are compared as DECLARED paths (severity applies when the
+    // template says something and live disagrees), not as security sentinels -
+    // a sentinel needs an absent-default, and AKS absent-defaults have not been
+    // read from a live cluster yet. Each is free or near-free and injectable
+    // with a single `az aks update`.
+    aadProfile: {
+      managed: true
+      enableAzureRBAC: true          // az aks update --disable-azure-rbac
+      tenantID: subscription().tenantId
+      adminGroupObjectIDs: []        // exact-set: an added group IS drift
+    }
+    addonProfiles: {
+      azurepolicy: {
+        enabled: true                // az aks disable-addons --addons azure-policy
+      }
+    }
+    autoUpgradeProfile: {
+      upgradeChannel: 'patch'        // az aks update --auto-upgrade-channel none
+    }
+    oidcIssuerProfile: {
+      enabled: true                  // az aks update --disable-... (recreate)
     }
   }
   tags: {
