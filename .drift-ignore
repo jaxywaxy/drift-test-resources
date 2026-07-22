@@ -9,9 +9,25 @@ ignore:
     property: "properties.locations"
     reason: "Azure returns additional read-only fields (documentEndpoint, id, provisioningState) and normalizes location name casing/spacing"
 
-  # NOTE: Microsoft.Authorization/roleAssignments is deliberately NOT ignored -
-  # out-of-band grants are exactly what RBAC drift detection catches. Ignore
-  # specific automation-created grants by name: "<RoleName> -> <Type>:<id>".
+  # Microsoft.Authorization/roleAssignments is deliberately NOT blanket-ignored -
+  # out-of-band grants are exactly what RBAC drift detection catches. We ignore
+  # ONE narrow class by name: "<RoleName> -> <Type>:<id>".
+  #
+  # Orphaned Monitoring Reader grants from teardown cycles. main.bicep declares a
+  # single Monitoring Reader grant for the workload identity (id-drift-test) via a
+  # runtime principalId. Each teardown recreates that identity with a NEW
+  # principalId, so the prior cycle's grant orphans (its principal is deleted) and
+  # surfaces as extra_in_azure until Azure garbage-collects it. The principalId
+  # rotates every cycle, so we CANNOT pin a specific GUID - hence the role-scoped
+  # glob. Held to extra_in_azure + ServicePrincipal only: a MISSING declared grant
+  # still surfaces, and any OTHER role granted out-of-band still surfaces.
+  # Trade-off: in THIS test estate we no longer catch a rogue Monitoring Reader
+  # grant to an SP - acceptable because the role is read-only/non-privileged and
+  # the estate is a throwaway. Do NOT copy this into a real landing zone.
+  - resource_type: "Microsoft.Authorization/roleAssignments"
+    resource_name: "Monitoring Reader -> ServicePrincipal:*"
+    drift_type: "extra_in_azure"
+    reason: "Orphaned Monitoring Reader grant from a prior teardown cycle (deleted principal); principalId rotates each redeploy so it is matched by role, not GUID"
 
   # NOTE: the Phase 4-era platform network-fabric ignores (virtualNetworks,
   # subnets, networkSecurityGroups, routeTables) were REMOVED: this estate now
