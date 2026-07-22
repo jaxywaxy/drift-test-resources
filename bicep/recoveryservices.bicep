@@ -34,4 +34,42 @@ resource backupConfig 'Microsoft.RecoveryServices/vaults/backupconfig@2023-06-01
   }
 }
 
+// Backup policy: retention/schedule is the compliance-critical backup control -
+// shrinking the retention window silently shortens how far back you can restore.
+// Declared (a custom AzureIaasVM daily policy) so an out-of-band retention or
+// schedule change surfaces as critical drift. The built-in DefaultPolicy /
+// EnhancedPolicy / HourlyLogBackup that every vault ships are undeclared and so
+// filtered as unmanaged - only this policy is compared. Times are fixed literals:
+// Azure returns scheduleRunTimes/retentionTimes exactly as declared (verified),
+// so they do not false-drift.
+resource vmBackupPolicy 'Microsoft.RecoveryServices/vaults/backupPolicies@2023-06-01' = {
+  parent: vault
+  name: 'drift-vm-daily'
+  properties: {
+    backupManagementType: 'AzureIaasVM'
+    policyType: 'V1'
+    instantRpRetentionRangeInDays: 2
+    timeZone: 'UTC'
+    schedulePolicy: {
+      schedulePolicyType: 'SimpleSchedulePolicy'
+      scheduleRunFrequency: 'Daily'
+      scheduleRunTimes: [
+        '2024-01-01T06:00:00Z'
+      ]
+    }
+    retentionPolicy: {
+      retentionPolicyType: 'LongTermRetentionPolicy'
+      dailySchedule: {
+        retentionTimes: [
+          '2024-01-01T06:00:00Z'
+        ]
+        retentionDuration: {
+          count: 30
+          durationType: 'Days'
+        }
+      }
+    }
+  }
+}
+
 output vaultId string = vault.id
