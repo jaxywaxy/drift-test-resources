@@ -34,6 +34,20 @@ module rgResources 'rg-resources.bicep' = {
   }
 }
 
+@description('Whether to deploy the monitoring/alerting stack')
+param deployMonitoring bool = true
+
+// Second module in the estate - deliberately a SEPARATE nested deployment so the
+// drift engine's module extraction is exercised across more than one module,
+// as in a real landing zone.
+module monitoring 'monitoring.bicep' = if (deployMonitoring) {
+  name: 'deployMonitoring'
+  params: {
+    location: location
+    suffix: suffix
+  }
+}
+
 output storageAccountName string = rgResources.outputs.storageAccountName
 output keyVaultName string = rgResources.outputs.keyVaultName
 output sqlServerName string = rgResources.outputs.sqlServerName
