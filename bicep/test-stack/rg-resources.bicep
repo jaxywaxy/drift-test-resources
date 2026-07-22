@@ -101,6 +101,9 @@ resource privateEndpoint 'Microsoft.Network/privateEndpoints@2021-05-01' = {
   }
 }
 
+// A logical SQL server carries no compute SKU - that lives on the database or
+// elastic pool. Azure returns sku: null on the server, so declaring one here
+// only produced permanent (cosmetic) drift.
 resource sqlServer 'Microsoft.Sql/servers@2022-02-01-preview' = {
   name: sqlServerName
   location: location
@@ -108,10 +111,6 @@ resource sqlServer 'Microsoft.Sql/servers@2022-02-01-preview' = {
     administratorLogin: adminLogin
     administratorLoginPassword: adminPassword
     version: '12.0'
-  }
-  sku: {
-    name: 'GP_Gen5_2'
-    tier: 'GeneralPurpose'
   }
 }
 
