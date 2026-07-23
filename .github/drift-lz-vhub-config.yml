@@ -3,6 +3,15 @@
 # untouched. The bicep lives on the feat/vhub-routing branch and is gated behind
 # deployVirtualHub/deployHubFirewall, so this check passes those as `params`
 # (fed to the agent as ARM_PARAMETERS by drift-check-lz-hybrid.yml).
+#
+# Scope: this check MUST target its own resource group (rg-drift-vhub), NOT the
+# shared rg-drift-test. vhub.bicep is a subset template; pointing it at the full
+# main.bicep estate makes every non-vHub resource surface as extra_in_azure
+# (scope mismatch, not drift). Deploy the vHub estate standalone into rg-drift-vhub
+# (`az deployment group create -g rg-drift-vhub --template-file bicep/vhub.bicep
+# --parameters deployVirtualHub=true deployHubFirewall=true`) and keep main.bicep's
+# deployVirtualHub=false so the two estates never share an RG. vhub.bicep uses
+# static resource names (no uniqueString), so this RG is name-safe.
 name: vhub-routing
 subscription_id: "594e0bd0-2a8d-4419-b281-87869c20fd03"
 
@@ -22,4 +31,4 @@ checks:
       deployHubFirewall: true
       hubFirewallTier: Standard
     resource_groups:
-      - rg-drift-test
+      - rg-drift-vhub
