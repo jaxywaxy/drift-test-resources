@@ -1,0 +1,25 @@
+# Dedicated drift check for the Virtual WAN hub routing estate (bicep/vhub.bicep).
+# Separate from drift-lz-config.yml so the standing test-resources check is
+# untouched. The bicep lives on the feat/vhub-routing branch and is gated behind
+# deployVirtualHub/deployHubFirewall, so this check passes those as `params`
+# (fed to the agent as ARM_PARAMETERS by drift-check-lz-hybrid.yml).
+name: vhub-routing
+subscription_id: "594e0bd0-2a8d-4419-b281-87869c20fd03"
+
+notifications:
+  platform:
+    slack: "${DRIFT_WEBHOOK_PLATFORM}"
+    owners: [platform]
+    filter: all
+
+checks:
+  - name: Virtual Hub Routing
+    repo: jaxywaxy/drift-test-resources
+    branch: feat/vhub-routing
+    path: bicep/vhub.bicep
+    params:
+      deployVirtualHub: true
+      deployHubFirewall: true
+      hubFirewallTier: Standard
+    resource_groups:
+      - rg-drift-test
