@@ -24,6 +24,12 @@ param deployAks bool = false
 // only when re-testing Cosmos. Gated like AKS/VM so day-to-day deploys are fast.
 param deployCosmos bool = false
 
+// Standard Virtual WAN hub (Tier-1 hub-routing drift: hubRouteTables, no
+// firewall) is OFF by default: ~$0.25/hr and ~30 min to deploy/delete. The hub
+// bills the moment it exists, so turn on only for a hub-routing test session.
+// The vhub module is also deployable standalone (see bicep/vhub.bicep).
+param deployVirtualHub bool = false
+
 // Deploy Storage Account
 module storageModule 'storage.bicep' = {
   name: 'deploy-storage'
@@ -218,6 +224,18 @@ module firewallModule 'firewall.bicep' = {
     location: location
     environment: environment
     deployFirewall: deployNetworkAppliances
+  }
+}
+
+// Standard Virtual WAN hub + one custom hubRouteTable (Tier-1 hub-routing drift
+// surface). Gated off by default - the hub bills the moment it exists. Also
+// deployable standalone (bicep/vhub.bicep).
+module vhubModule 'vhub.bicep' = {
+  name: 'deploy-vhub'
+  params: {
+    location: location
+    environment: environment
+    deployVirtualHub: deployVirtualHub
   }
 }
 
