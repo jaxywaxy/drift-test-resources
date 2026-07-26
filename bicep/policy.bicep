@@ -39,7 +39,8 @@ resource assignment 'Microsoft.Authorization/policyAssignments@2022-06-01' = {
 //                 drift. Redeploying would only lose the race again next
 //                 remediation cycle - the real fix is reconciling the template.
 //
-// Modify needs a managed identity with Tag Contributor, and only fires on
+// Modify needs a managed identity with the definition's remediation role (see
+// remediationRoleId below), and only fires on
 // resource WRITE - existing resources need an explicit remediation task:
 //   az policy remediation create --name <n> -g rg-drift-test --policy-assignment <name>
 //
@@ -47,10 +48,17 @@ resource assignment 'Microsoft.Authorization/policyAssignments@2022-06-01' = {
 // under test, so deliberately not declared as a Microsoft.Resources/tags
 // resource - that type is not indexed by Resource Graph and would read as a
 // permanent missing_in_azure false positive):
-//   az group update -n rg-drift-test --set tags.costCentre=CC-1234 tags.environment=production
+// The RG tags themselves are set by the deploy workflow's `az group create`:
+// that call PUTs the resource group, and a PUT without --tags replaces the tag
+// map with an empty one - so setting them by hand out-of-band survives only
+// until the next deploy.
 var inheritTagIfMissingPolicyId = 'ea3f2387-9b95-492a-a190-fcdc54f7b070' // add only
 var inheritTagPolicyId = 'cd3aa116-8754-49c9-a813-ad46512ece54'          // add or REPLACE
-var tagContributorRoleId = '4a9ae827-6dc8-4573-8ac7-8239d42aa03f'
+// Contributor, NOT Tag Contributor. Azure validates the assignment identity
+// against the roleDefinitionIds the DEFINITION declares, and both inherit-tag
+// built-ins declare Contributor (b24988ac). Granting the narrower Tag
+// Contributor looks sufficient but leaves remediation failing on permissions.
+var remediationRoleId = 'b24988ac-6180-42a0-ab88-20f7382dd24c'
 
 resource inheritCostCentre 'Microsoft.Authorization/policyAssignments@2022-06-01' = {
   name: 'drift-inherit-costcentre'
@@ -82,25 +90,25 @@ resource inheritEnvironment 'Microsoft.Authorization/policyAssignments@2022-06-0
   }
 }
 
-// Modify remediation writes tags, so each assignment identity needs Tag
-// Contributor at this scope or remediation fails with a permissions error.
+// Modify remediation writes tags, so each assignment identity needs the
+// definition's declared remediation role at this scope.
 resource costCentreTagRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(resourceGroup().id, inheritCostCentre.id, tagContributorRoleId)
+  name: guid(resourceGroup().id, inheritCostCentre.id, remediationRoleId)
   properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', tagContributorRoleId)
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', remediationRoleId)
     principalId: inheritCostCentre.identity.principalId
     principalType: 'ServicePrincipal'
-    description: 'drift-test: lets the costCentre inherit-tag policy write tags'
+    description: 'drift-test: remediation role required by the inherit-tag definition'
   }
 }
 
 resource environmentTagRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(resourceGroup().id, inheritEnvironment.id, tagContributorRoleId)
+  name: guid(resourceGroup().id, inheritEnvironment.id, remediationRoleId)
   properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', tagContributorRoleId)
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', remediationRoleId)
     principalId: inheritEnvironment.identity.principalId
     principalType: 'ServicePrincipal'
-    description: 'drift-test: lets the environment inherit-tag policy write tags'
+    description: 'drift-test: remediation role required by the inherit-tag definition'
   }
 }
 

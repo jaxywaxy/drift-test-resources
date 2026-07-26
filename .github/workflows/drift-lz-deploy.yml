@@ -78,9 +78,17 @@ jobs:
 
       - name: Create resource group
         run: |
+          # --tags is NOT optional here. `az group create` PUTs the resource
+          # group, and a PUT without tags replaces the tag map with an empty
+          # one - so this step silently wiped RG tagging on every run. The
+          # inherit-tag policies in bicep/policy.bicep read these values, and
+          # with no RG tag their rule short-circuits ("inherit nothing") and
+          # every resource evaluates compliant, which looks like the agent
+          # missing drift rather than the fixture being unset.
           az group create \
             --name "${{ env.RESOURCE_GROUP }}" \
-            --location "${{ env.LOCATION }}" || true
+            --location "${{ env.LOCATION }}" \
+            --tags costCentre=CC-1234 environment=production || true
 
       - name: Recover soft-deleted resources
         run: |
