@@ -19,12 +19,7 @@ notifications:
 checks:
   - name: Test Infrastructure
     repo: jaxywaxy/drift-test-resources
-    # SCHEMA-FLAG ROUND: pointed at the injection branch on purpose. The
-    # injections must NOT be merged to main - `allowedCopyScope` is a real,
-    # deployable property, so the deploy workflow (push, paths bicep/**) would
-    # apply it and the control injection would stop being a control.
-    # Revert to `main` when the round closes.
-    branch: inject/schema-flags-round
+    branch: main
     path: bicep/main.bicep
     resource_groups:
       - rg-drift-test
