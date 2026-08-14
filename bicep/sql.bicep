@@ -35,6 +35,11 @@ resource sqlDb 'Microsoft.Sql/servers/databases@2023-08-01-preview' = {
   }
   properties: {
     maxSizeBytes: 104857600 // 100 MB - smallest Basic size
+    // INJECTION C (schema round): sampleName is flagged write-only by the SQL
+    // RP - a create-time input Azure never returns - and is NOT in the
+    // hand-maintained WRITE_ONLY_PROPERTIES. Expect it SUPPRESSED by the
+    // schema-derived half of the write-only rule.
+    sampleName: 'AdventureWorksLT'
   }
   tags: {
     environment: environment
