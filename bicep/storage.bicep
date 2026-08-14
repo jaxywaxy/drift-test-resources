@@ -13,6 +13,18 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
     minimumTlsVersion: 'TLS1_2'
     supportsHttpsTrafficOnly: true
     publicNetworkAccess: 'Enabled'
+    // INJECTION A (schema round): added to storageAccounts AFTER 2023-01-01, so
+    // this resource's pinned apiVersion does not define it. bicep build warns
+    // BCP037 and compiles; ARM drops it. Expect it SUPPRESSED, not reported.
+    allowSharedKeyAccessForServices: {
+      blob: {
+        enabled: true
+      }
+    }
+    // INJECTION B (control): allowedCopyScope IS defined at 2023-01-01 and is
+    // not set on the live account. Expect it REPORTED. If A and B behave the
+    // same, the check is not discriminating - it is suppressing everything.
+    allowedCopyScope: 'AAD'
   }
   tags: {
     environment: environment
